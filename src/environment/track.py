@@ -111,25 +111,73 @@ class Track:
         self,
         rng: np.random.Generator | None = None,
         random_on_start_line: bool = False,
+        car_length: float = 0.0,
+        car_width: float = 0.0,
     ) -> tuple[float, float, float]:
         """Return the default start pose, or sample one on the start line."""
         if not random_on_start_line or len(self.start_line) != 2:
-            first = self.centerline[0]
-            return (first[0], first[1], self.initial_heading())
+            point, heading = self._first_inside_start_pose(car_length, car_width)
+            return (point[0], point[1], heading)
 
         generator = rng or np.random.default_rng()
         t = float(generator.random())
         (x0, y0), (x1, y1) = self.start_line
         x = x0 + (x1 - x0) * t
         y = y0 + (y1 - y0) * t
-        return (x, y, self.initial_heading())
+        return (x, y, self.initial_heading(car_length, car_width))
 
-    def initial_heading(self) -> float:
-        """Heading from the first to the second centerline point."""
+    def initial_heading(self, car_length: float = 0.0, car_width: float = 0.0) -> float:
+        """Heading of the first centerline pose where the car fits."""
+        return self._first_inside_start_pose(car_length, car_width)[1]
+
+    def _first_inside_start_pose(
+        self,
+        car_length: float,
+        car_width: float,
+    ) -> tuple[Point2D, float]:
         if len(self.centerline) < 2:
-            return 0.0
-        (x0, y0), (x1, y1) = self.centerline[0], self.centerline[1]
-        return math.atan2(y1 - y0, x1 - x0)
+            return (self.centerline[0], 0.0)
+
+        for index in range(len(self.centerline) - 1):
+            point = self.centerline[index]
+            heading = _heading_between(point, self.centerline[index + 1])
+            if self._car_pose_fits(point, heading, car_length, car_width):
+                return (point, heading)
+
+        return self._first_inside_interpolated_pose(car_length, car_width)
+
+    def _first_inside_interpolated_pose(
+        self,
+        car_length: float,
+        car_width: float,
+    ) -> tuple[Point2D, float]:
+        line = self.center_line_string
+        if line.length <= 0.0:
+            return (self.centerline[0], 0.0)
+
+        step = max(min(car_length, self.track_width) / 4.0, 2.0)
+        distances = np.arange(0.0, line.length + step, step)
+        for distance in distances:
+            point_geom = line.interpolate(min(float(distance), line.length))
+            point = (float(point_geom.x), float(point_geom.y))
+            heading = self.heading_near(point)
+            if self._car_pose_fits(point, heading, car_length, car_width):
+                return (point, heading)
+
+        point_geom = line.interpolate(min(line.length, max(car_length / 2.0, 0.0)))
+        point = (float(point_geom.x), float(point_geom.y))
+        return (point, self.heading_near(point))
+
+    def _car_pose_fits(
+        self,
+        point: Point2D,
+        heading: float,
+        car_length: float,
+        car_width: float,
+    ) -> bool:
+        if car_length <= 0.0 or car_width <= 0.0:
+            return self.contains_point(point)
+        return self.contains_polygon(_oriented_rectangle(point, heading, car_length, car_width))
 
     def heading_near(self, point: Point2D) -> float:
         """Estimate tangent heading of the centerline near a point."""
@@ -212,6 +260,37 @@ class Track:
 def _as_point_tuple(point: Iterable[float]) -> Point2D:
     x, y = point
     return (float(x), float(y))
+
+
+def _heading_between(start: Point2D, end: Point2D) -> float:
+    return math.atan2(end[1] - start[1], end[0] - start[0])
+
+
+def _oriented_rectangle(
+    center: Point2D,
+    heading: float,
+    length: float,
+    width: float,
+) -> Polygon:
+    half_l = length / 2.0
+    half_w = width / 2.0
+    cos_h = math.cos(heading)
+    sin_h = math.sin(heading)
+    local = [
+        (half_l, half_w),
+        (half_l, -half_w),
+        (-half_l, -half_w),
+        (-half_l, half_w),
+    ]
+    return Polygon(
+        [
+            (
+                center[0] + lx * cos_h - ly * sin_h,
+                center[1] + lx * sin_h + ly * cos_h,
+            )
+            for lx, ly in local
+        ]
+    )
 
 
 def load_track(path: str | Path) -> Track:

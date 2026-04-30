@@ -44,7 +44,8 @@ class EnvironmentTests(unittest.TestCase):
         self.assertEqual(len(loaded.obstacles), 1)
         self.assertTrue(loaded.is_valid())
 
-    def test_default_start_pose_uses_first_centerline_segment(self) -> None:
+    def test_default_start_pose_uses_first_fitting_centerline_point(self) -> None:
+        config = load_config("config.toml")
         track = Track(
             "start",
             80.0,
@@ -53,14 +54,17 @@ class EnvironmentTests(unittest.TestCase):
             [(160.0, 30.0), (160.0, 110.0)],
             [],
         )
-        x, y, heading = track.start_pose()
-        self.assertEqual((x, y), (10.0, 20.0))
-        self.assertAlmostEqual(heading, 0.0)
+        x, y, heading = track.start_pose(
+            car_length=config.car.length,
+            car_width=config.car.width,
+        )
+        self.assertEqual((x, y), (110.0, 20.0))
+        self.assertAlmostEqual(heading, 0.7853981633974483)
 
-    def test_start_line_intersection_prevents_initial_off_track_failure(self) -> None:
+    def test_env_reset_starts_with_car_fully_inside_track(self) -> None:
         config = load_config("config.toml")
         track = Track(
-            "start_exception",
+            "inside_start",
             config.track.track_width,
             [(100.0, 100.0), (300.0, 100.0)],
             [(100.0, 50.0), (100.0, 150.0)],
@@ -69,10 +73,26 @@ class EnvironmentTests(unittest.TestCase):
         )
         env = DrivingEnv(config, track)
         result = env.reset()
-        self.assertFalse(track.contains_polygon(env.car.polygon()))
-        self.assertTrue(env.car.polygon().intersects(track.start_geometry))
+        self.assertTrue(track.contains_polygon(env.car.polygon()))
         result = env.step((0.0, 0.0))
         self.assertEqual(result.reason, "running")
+
+    def test_finish_success_uses_car_polygon_not_center_path(self) -> None:
+        config = load_config("config.toml")
+        track = Track(
+            "finish_polygon",
+            config.track.track_width,
+            [(100.0, 100.0), (200.0, 100.0)],
+            [(100.0, 50.0), (100.0, 150.0)],
+            [(200.0, 50.0), (200.0, 150.0)],
+            [],
+        )
+        env = DrivingEnv(config, track)
+        env.reset()
+        env.previous_position = (183.0, 100.0)
+        env.car.reset(CarState(183.0, 100.0, 0.0, 0.0))
+        self.assertTrue(env.car.polygon().intersects(track.finish_geometry))
+        self.assertEqual(env._terminal_reason(), "success")
 
     def test_lidar_hits_nearest_obstacle(self) -> None:
         track = Track(

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
-from shapely.geometry import LineString
 
 from src.config.settings import AppConfig
 from src.environment.car import Car, CarState
@@ -69,6 +68,8 @@ class DrivingEnv:
             x, y, heading = self.track.start_pose(
                 self.rng if random_start else None,
                 random_on_start_line=random_start,
+                car_length=self.config.car.length,
+                car_width=self.config.car.width,
             )
         self.car.reset(CarState(x, y, heading, 0.0))
         self.steps = 0
@@ -105,11 +106,10 @@ class DrivingEnv:
         )
 
     def _terminal_reason(self) -> TerminalReason:
-        path = LineString([self.previous_position, (self.car.state.x, self.car.state.y)])
-        if path.intersects(self.track.finish_geometry):
-            return "success"
         polygon = self.car.polygon()
-        if not self.track.contains_polygon(polygon) and not polygon.intersects(self.track.start_geometry):
+        if polygon.intersects(self.track.finish_geometry):
+            return "success"
+        if not self.track.contains_polygon(polygon):
             return "off_track"
         if self.track.obstacle_hit(polygon):
             return "collision"
