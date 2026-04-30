@@ -83,6 +83,8 @@ class RlConfig:
     reward_success: float = 10.0
     reward_safe: float = 1.0
     reward_unsafe: float = -1.0
+    reward_progress: float = 0.25
+    reward_regress: float = -0.25
     dc_threshold_safe: float = 0.5
     drl_threshold_safe: float = 0.2
     dc_threshold_unsafe: float = 0.3

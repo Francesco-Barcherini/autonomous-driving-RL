@@ -48,8 +48,6 @@ def generate_som_samples(
         np.zeros((config.som.dim_grid_neurons, config.som.dim_grid_neurons, 2), dtype=float),
     )
     samples: list[SomSample] = []
-    max_dc = -1 #debug
-    max_difference_r_l = -1 #debug
     for index in range(total):
         track = tracks[index % len(tracks)]
         x, y, heading = track.sample_drivable_point(
@@ -59,10 +57,6 @@ def generate_som_samples(
         state = CarState(x, y, heading, 0.0)
         reading = lidar.scan(state, track)
         features = np.asarray(reading.vector, dtype=float) # [distance, difference_r_l]
-        if features[0] > max_dc:
-            max_dc = features[0]
-        if features[1] > max_difference_r_l:
-            max_difference_r_l = features[1]
         samples.append(
             SomSample(
                 track=track,
@@ -72,7 +66,6 @@ def generate_som_samples(
                 normalized=placeholder.normalize_features(features),
             )
         )
-    print(f"max distance to closest obstacle: {max_dc:.2f}, max difference R-L: {max_difference_r_l:.2f}")
     return samples
 
 
@@ -112,7 +105,7 @@ def train_som(
     total = len(data)
     order = np.arange(total)
     rng.shuffle(order)
-    visible = False
+    visible = True
     for iteration, sample_index in enumerate(order):
         vector = data[sample_index]
         som.update(vector, som.winner(vector), iteration, total)
@@ -120,6 +113,7 @@ def train_som(
             visible = view.process_events(visible)
             if visible or iteration % 10 == 0:
                 sigma, learning_rate = _current_som_rates(som, iteration, total)
+                weights = som.get_weights()
                 view.draw(
                     samples[sample_index],
                     iteration + 1,
@@ -127,7 +121,7 @@ def train_som(
                     sigma,
                     learning_rate,
                     SomDiscretizer(
-                        weights=som.get_weights(),
+                        weights=weights,
                         grid_dim=grid_dim,
                         norm_scale=1.0,
                         min_d_c=0.0,
@@ -135,6 +129,8 @@ def train_som(
                         min_difference_r_l=-1.0,
                         max_difference_r_l=1.0,
                     ).state_from_features(vector),
+                    data,
+                    weights,
                     visible,
                 )
     if view is not None:
@@ -182,6 +178,8 @@ class SomTrainingView:
         sigma: float,
         learning_rate: float,
         active_state: int,
+        data: np.ndarray,
+        weights: np.ndarray,
         visible: bool,
     ) -> None:
         if not visible:
@@ -194,6 +192,8 @@ class SomTrainingView:
             lidar=sample.lidar,
             som_state=active_state,
             som_dim=self.grid_dim,
+            som_feature_points=data,
+            som_weights=weights,
             lines=[
                 f"samples {count}/{total}",
                 f"sigma {sigma:.4f}",

@@ -43,6 +43,8 @@ class Renderer:
         som_dim: int | None = None,
         action: tuple[float, float] | None = None,
         q_table: np.ndarray | None = None,
+        som_feature_points: np.ndarray | None = None,
+        som_weights: np.ndarray | None = None,
         lines: Iterable[str] = (),
     ) -> None:
         pygame = self.pygame
@@ -54,7 +56,16 @@ class Renderer:
             self._draw_car(car)
         self._draw_obstacles(track.obstacles)
         panel_x = self.config.graphics.screen_width - 270
-        self._draw_panel(panel_x, som_state, som_dim, action, q_table, lines)
+        self._draw_panel(
+            panel_x,
+            som_state,
+            som_dim,
+            action,
+            q_table,
+            som_feature_points,
+            som_weights,
+            lines,
+        )
         pygame.display.flip()
 
     def _draw_track(self, track: Track) -> None:
@@ -119,6 +130,8 @@ class Renderer:
         som_dim: int | None,
         action: tuple[float, float] | None,
         q_table: np.ndarray | None,
+        som_feature_points: np.ndarray | None,
+        som_weights: np.ndarray | None,
         lines: Iterable[str],
     ) -> None:
         y = 16
@@ -131,6 +144,9 @@ class Renderer:
         if som_dim is not None:
             self._draw_som_grid(x, y, som_dim, som_state)
             y += som_dim * 18 + 24
+        if som_feature_points is not None and som_weights is not None:
+            self._draw_som_feature_map(x, y, som_feature_points, som_weights)
+            y += 194
         if q_table is not None:
             self._draw_q_heatmap(x, y, q_table)
 
@@ -164,6 +180,48 @@ class Renderer:
                 rect = pygame.Rect(x + col * cell, y + row * cell, cell - 1, cell - 1)
                 pygame.draw.rect(self.screen, color, rect)
 
+    def _draw_som_feature_map(
+        self,
+        x: int,
+        y: int,
+        feature_points: np.ndarray,
+        weights: np.ndarray,
+    ) -> None:
+        pygame = self.pygame
+        width = 230
+        height = 170
+        rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(self.screen, (30, 35, 43), rect)
+        pygame.draw.rect(self.screen, (102, 114, 130), rect, 1)
+        self._text("input / weights", x, y - 20)
+
+        points = np.asarray(feature_points, dtype=float).reshape(-1, 2)
+        weight_points = np.asarray(weights, dtype=float).reshape(-1, 2)
+        if points.size == 0 or weight_points.size == 0:
+            return
+
+        all_points = np.vstack([points, weight_points])
+        min_xy = np.min(all_points, axis=0)
+        max_xy = np.max(all_points, axis=0)
+        span = np.maximum(max_xy - min_xy, 1e-9)
+        padding = span * 0.08
+        min_xy -= padding
+        max_xy += padding
+        span = np.maximum(max_xy - min_xy, 1e-9)
+
+        max_dots = 700
+        if len(points) > max_dots:
+            stride = int(np.ceil(len(points) / max_dots))
+            points = points[::stride]
+
+        for point in points:
+            px, py = _map_feature_point(point, min_xy, span, rect)
+            pygame.draw.circle(self.screen, (91, 169, 216), (px, py), 2)
+
+        for point in weight_points:
+            px, py = _map_feature_point(point, min_xy, span, rect)
+            pygame.draw.rect(self.screen, (245, 207, 82), pygame.Rect(px - 3, py - 3, 6, 6))
+
     def _text(self, text: str, x: int, y: int) -> None:
         surface = self.font.render(text, True, (226, 231, 236))
         self.screen.blit(surface, (x, y))
@@ -175,3 +233,16 @@ def _iter_polygons(geometry) -> list:
     if geometry.geom_type == "Polygon":
         return [geometry]
     return [part for part in getattr(geometry, "geoms", []) if part.geom_type == "Polygon"]
+
+
+def _map_feature_point(
+    point: np.ndarray,
+    min_xy: np.ndarray,
+    span: np.ndarray,
+    rect: pygame.Rect,
+) -> tuple[int, int]:
+    x_norm = (point[0] - min_xy[0]) / span[0]
+    y_norm = (point[1] - min_xy[1]) / span[1]
+    x = rect.left + 8 + int(x_norm * max(rect.width - 16, 1))
+    y = rect.bottom - 8 - int(y_norm * max(rect.height - 16, 1))
+    return (x, y)

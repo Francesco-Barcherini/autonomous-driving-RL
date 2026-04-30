@@ -12,7 +12,7 @@ import numpy as np
 from src.config.settings import AppConfig
 from src.environment.env import StepResult
 from src.environment.lidar import LidarReading
-from src.environment.track import latest_file
+from src.environment.track import Track, latest_file
 from src.rl.actions import ActionSpace
 
 
@@ -75,7 +75,7 @@ class QAgent:
 
     def increment_beta(self) -> None:
         self.beta += self.beta_increment
-        
+
 
 def stable_softmax(values: np.ndarray, beta: float) -> np.ndarray:
     shifted = values - np.max(values)
@@ -86,11 +86,20 @@ def stable_softmax(values: np.ndarray, beta: float) -> np.ndarray:
     return exp_values / total
 
 
-def compute_reward(config: AppConfig, result: StepResult) -> float:
+def compute_reward(
+    config: AppConfig,
+    result: StepResult,
+    track: Track | None = None,
+    previous_position: tuple[float, float] | None = None,
+    current_position: tuple[float, float] | None = None,
+) -> float:
     reward = float(config.rl.reward_step)
     if result.done:
         reward += config.rl.reward_success if result.success else config.rl.reward_fail
         return reward
+
+    if track is not None and previous_position is not None and current_position is not None:
+        reward += progress_reward(config, track, previous_position, current_position)
 
     dc_ratio, drl_ratio = safety_ratios(config, result.lidar)
     if dc_ratio > config.rl.dc_threshold_safe and drl_ratio < config.rl.drl_threshold_safe:
@@ -98,6 +107,28 @@ def compute_reward(config: AppConfig, result: StepResult) -> float:
     if dc_ratio < config.rl.dc_threshold_unsafe or drl_ratio > config.rl.drl_threshold_unsafe:
         reward += config.rl.reward_unsafe
     return reward
+
+
+def progress_reward(
+    config: AppConfig,
+    track: Track,
+    previous_position: tuple[float, float],
+    current_position: tuple[float, float],
+) -> float:
+    previous_index = nearest_centerline_index(track, previous_position)
+    current_index = nearest_centerline_index(track, current_position)
+    if current_index > previous_index:
+        return float(config.rl.reward_progress)
+    if current_index < previous_index:
+        return float(config.rl.reward_regress)
+    return 0.0
+
+
+def nearest_centerline_index(track: Track, position: tuple[float, float]) -> int:
+    point = np.asarray(position, dtype=float)
+    centerline = np.asarray(track.centerline, dtype=float)
+    distances = np.linalg.norm(centerline - point, axis=1)
+    return int(np.argmin(distances))
 
 
 def safety_ratios(config: AppConfig, reading: LidarReading) -> tuple[float, float]:

@@ -52,7 +52,13 @@ def train_q_learning(
             action = actions[action_index]
             result = env.step(action)
             next_state = som.state_from_lidar(result.lidar)
-            reward = compute_reward(config, result)
+            reward = compute_reward(
+                config,
+                result,
+                track=env.track,
+                previous_position=env.previous_position,
+                current_position=(env.car.state.x, env.car.state.y),
+            )
             total_reward += reward
             print(total_reward, end="\r")
             agent.update(state, action_index, reward, next_state, result.done)
