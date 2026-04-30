@@ -35,6 +35,7 @@ def train_q_learning(
     agent = QAgent.fresh(som.num_states, len(actions), config)
     episode_count = episodes if episodes is not None else config.rl.num_episodes
     view = None if headless else RlTrainingView(config, som.grid_dim)
+    visible = True
 
     last_path = None
     for episode in range(episode_count):
@@ -42,7 +43,6 @@ def train_q_learning(
         env = DrivingEnv(config, track, rng)
         result = env.reset()
         state = som.state_from_lidar(result.lidar)
-        visible = False
 
         total_reward = 0
         print("")
@@ -73,6 +73,7 @@ def train_q_learning(
             state = next_state
 
         agent.decay_epsilon()
+        agent.increment_beta()
         if (episode + 1) % config.rl.checkpoint_episodes == 0:
             last_path = save_q_table(
                 config.rl_dir,

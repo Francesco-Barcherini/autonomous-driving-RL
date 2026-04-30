@@ -55,7 +55,6 @@ class QAgent:
         else:
             probabilities = stable_softmax(self.q_table[state], self.beta)
             action = int(rng.choice(np.arange(self.q_table.shape[1]), p=probabilities))
-        self.beta += self.beta_increment
         return action
 
     def update(
@@ -74,6 +73,9 @@ class QAgent:
     def decay_epsilon(self) -> None:
         self.epsilon *= self.epsilon_decay
 
+    def increment_beta(self) -> None:
+        self.beta += self.beta_increment
+        
 
 def stable_softmax(values: np.ndarray, beta: float) -> np.ndarray:
     shifted = values - np.max(values)
