@@ -12,15 +12,17 @@ from src.environment.track import Track, load_tracks
 from src.graphics.renderer import Renderer
 from src.kohonen.som import SomDiscretizer, load_som_model
 from src.rl.actions import ActionSpace
-from src.rl.q_learning import QAgent, compute_reward, save_q_table
+from src.rl.q_learning import QAgent, compute_reward, load_q_table, save_q_table
 
 
 def train_q_learning(
     config: AppConfig,
     som_path: str | Path | None = None,
+    q_table_path: str | Path | None = None,
     episodes: int | None = None,
     seed: int | None = None,
     headless: bool = False,
+    resume: bool = True,
 ) -> Path:
     config.ensure_output_dirs()
     config.simulation.max_steps_per_episode = config.rl.max_steps_per_episode
@@ -32,13 +34,29 @@ def train_q_learning(
     tracks = [track for _, track in track_pairs]
     rng = np.random.default_rng(seed if seed is not None else config.simulation.random_seed)
     actions = ActionSpace.from_config(config)
-    agent = QAgent.fresh(som.num_states, len(actions), config)
+    agent, start_episode = _load_or_create_agent(
+        config,
+        som.num_states,
+        len(actions),
+        q_table_path,
+        resume,
+    )
     episode_count = episodes if episodes is not None else config.rl.num_episodes
+    target_episode = start_episode + episode_count
     view = None if headless else RlTrainingView(config, som.grid_dim)
     visible = True
+    last_hidden_print: int | None = None
 
     last_path = None
     for episode in range(episode_count):
+        global_episode = start_episode + episode + 1
+        last_hidden_print = _print_hidden_episode(
+            view,
+            visible,
+            global_episode,
+            target_episode,
+            last_hidden_print,
+        )
         track = tracks[episode % len(tracks)]
         env = DrivingEnv(config, track, rng)
         result = env.reset()
@@ -63,14 +81,21 @@ def train_q_learning(
 
             if view is not None:
                 visible = view.process_events(visible)
+                last_hidden_print = _print_hidden_episode(
+                    view,
+                    visible,
+                    global_episode,
+                    target_episode,
+                    last_hidden_print,
+                )
                 view.draw(
                     env,
                     som,
                     next_state,
                     action,
                     agent.q_table,
-                    episode + 1,
-                    episode_count,
+                    global_episode,
+                    target_episode,
                     agent,
                     total_reward,
                     visible,
@@ -79,14 +104,14 @@ def train_q_learning(
 
         agent.decay_epsilon()
         agent.increment_beta()
-        if (episode + 1) % config.rl.checkpoint_episodes == 0:
+        if global_episode % config.rl.checkpoint_episodes == 0:
             last_path = save_q_table(
                 config.rl_dir,
                 agent,
                 actions,
                 config,
                 som.source_path,
-                episode + 1,
+                global_episode,
                 checkpoint=True,
             )
 
@@ -99,7 +124,7 @@ def train_q_learning(
         actions,
         config,
         som.source_path,
-        episode_count,
+        target_episode,
         checkpoint=False,
     ) or last_path
 
@@ -134,7 +159,6 @@ class RlTrainingView:
         visible: bool,
     ) -> None:
         if not visible:
-            self.renderer.tick()
             return
         self.renderer.draw(
             env.track,
@@ -171,3 +195,52 @@ def _lidar_display_lines(
         return []
     d_c, d_rl = som.display_values_from_lidar(reading)
     return [f"d_c {d_c:.3f}", f"d_rl {d_rl:.3f}"]
+
+
+def _load_or_create_agent(
+    config: AppConfig,
+    num_states: int,
+    num_actions: int,
+    q_table_path: str | Path | None,
+    resume: bool,
+) -> tuple[QAgent, int]:
+    if not resume and q_table_path is None:
+        print("starting Q-learning from a fresh Q-table")
+        return QAgent.fresh(num_states, num_actions, config), 0
+
+    try:
+        bundle = load_q_table(q_table_path, config)
+    except FileNotFoundError:
+        if q_table_path is not None:
+            raise
+        print("starting Q-learning from a fresh Q-table")
+        return QAgent.fresh(num_states, num_actions, config), 0
+
+    expected_shape = (num_states, num_actions)
+    if bundle.q_table.shape != expected_shape:
+        print(
+            "ignored resume Q-table with shape "
+            f"{bundle.q_table.shape}; expected {expected_shape}"
+        )
+        return QAgent.fresh(num_states, num_actions, config), 0
+
+    print(
+        f"resuming Q-learning from {bundle.source_path} at episode {bundle.episode}; "
+        f"epsilon={config.rl.resume_epsilon}, beta={config.rl.resume_beta}"
+    )
+    return QAgent.resume(bundle.q_table, config), bundle.episode
+
+
+def _print_hidden_episode(
+    view: RlTrainingView | None,
+    visible: bool,
+    episode: int,
+    target_episode: int,
+    last_printed_episode: int | None,
+) -> int | None:
+    if view is not None and visible:
+        return last_printed_episode
+    if last_printed_episode != episode:
+        print(f"episode {episode}/{target_episode}")
+        return episode
+    return last_printed_episode

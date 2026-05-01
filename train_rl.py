@@ -13,9 +13,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train tabular Q-learning on saved tracks")
     parser.add_argument("--config", default="config.toml", help="path to TOML configuration")
     parser.add_argument("--som", default=None, help="path to SOM .npz model; defaults to latest")
+    parser.add_argument("--qtable", default=None, help="Q-table .npz to resume; defaults to latest")
     parser.add_argument("--episodes", type=int, default=None, help="episode count override")
     parser.add_argument("--seed", type=int, default=None, help="random seed override")
     parser.add_argument("--headless", action="store_true", help="disable Pygame debug window")
+    parser.add_argument("--fresh", action="store_true", help="start from an empty Q-table")
     return parser
 
 
@@ -24,9 +26,11 @@ def main() -> None:
     path = train_q_learning(
         load_config(args.config),
         som_path=args.som,
+        q_table_path=args.qtable,
         episodes=args.episodes,
         seed=args.seed,
         headless=args.headless,
+        resume=not args.fresh,
     )
     print(f"saved Q-table: {path}")
 

@@ -49,6 +49,18 @@ class QAgent:
             beta_increment=config.rl.beta_increment,
         )
 
+    @classmethod
+    def resume(cls, q_table: np.ndarray, config: AppConfig) -> "QAgent":
+        return cls(
+            q_table=np.asarray(q_table, dtype=float).copy(),
+            gamma=config.rl.gamma,
+            alpha=config.rl.alpha,
+            epsilon=config.rl.resume_epsilon,
+            epsilon_decay=config.rl.epsilon_decay,
+            beta=config.rl.resume_beta,
+            beta_increment=config.rl.beta_increment,
+        )
+
     def select_action(self, state: int, rng: np.random.Generator) -> int:
         if rng.random() < self.epsilon:
             action = int(rng.integers(0, self.q_table.shape[1]))
@@ -147,7 +159,7 @@ def save_q_table(
     checkpoint: bool = False,
 ) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     prefix = f"qtable_checkpoint_{episode:06d}" if checkpoint else "qtable"
     path = directory / f"{prefix}_{timestamp}.npz"
     np.savez(

@@ -5,7 +5,7 @@ rl_dir = "out/rl"
 
 [simulation]
 dt = 0.1
-max_steps_per_episode = 1000
+max_steps_per_episode = 10000
 random_seed = 42
 
 [graphics]
@@ -28,9 +28,9 @@ editor_min_point_distance = 8.0
 [car]
 length = 34.0
 width = 18.0
-max_speed = 100.0
+max_speed = 50.0
 min_speed = 0.0
-max_acceleration = 20.0
+max_acceleration = 10.0
 max_steering_diff_angle_deg = 2.0
 
 [lidar]
@@ -49,12 +49,12 @@ random_seed = 42
 
 [rl]
 reward_step = -0.01
-reward_fail = -10.0
+reward_fail = -100.0
 reward_success = 100.0
 reward_safe = 0.5
 reward_unsafe = -0.5
-reward_progress = 1.0
-reward_regress = -1.0
+reward_progress = 0.8
+reward_regress = -0.8
 dc_threshold_safe = 0.5
 drl_threshold_safe = 0.2
 dc_threshold_unsafe = 0.3
@@ -65,6 +65,8 @@ epsilon = 1.0
 epsilon_decay = 0.97
 beta = 0.0
 beta_increment = 0.01
+resume_epsilon = 0.5
+resume_beta = 0.5
 num_episodes = 1000
-max_steps_per_episode = 1000
-checkpoint_episodes = 100
+max_steps_per_episode = 10000
+checkpoint_episodes = 50

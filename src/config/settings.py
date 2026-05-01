@@ -95,6 +95,8 @@ class RlConfig:
     epsilon_decay: float = 0.99
     beta: float = 0.0
     beta_increment: float = 0.01
+    resume_epsilon: float = 0.5
+    resume_beta: float = 0.5
     num_episodes: int = 1000
     max_steps_per_episode: int = 1000
     checkpoint_episodes: int = 100
