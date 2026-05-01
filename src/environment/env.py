@@ -89,9 +89,9 @@ class DrivingEnv:
             assert self.last_lidar is not None
             return StepResult(self.observation(), self.last_lidar, True, self.reason == "success", self.reason)
 
-        acceleration, steering_acceleration = action
+        acceleration, steering_diff_angle = action
         self.previous_position = (self.car.state.x, self.car.state.y)
-        self.car.step(acceleration, steering_acceleration, self.config.simulation.dt)
+        self.car.step(acceleration, steering_diff_angle, self.config.simulation.dt)
         self.steps += 1
         reason = self._terminal_reason()
         self.done = reason != "running"

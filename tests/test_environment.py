@@ -17,16 +17,15 @@ HAS_SHAPELY = importlib.util.find_spec("shapely") is not None
 class EnvironmentTests(unittest.TestCase):
     def test_car_euler_step(self) -> None:
         car = Car(30.0, 10.0, 100.0, -20.0, CarState(0.0, 0.0, 0.0, 0.0))
-        car.step(acceleration=10.0, steering_acceleration_deg=0.0, dt=1.0)
+        car.step(acceleration=10.0, steering_diff_angle_deg=0.0, dt=1.0)
         self.assertAlmostEqual(car.state.velocity, 10.0)
         self.assertAlmostEqual(car.state.x, 10.0)
         self.assertAlmostEqual(car.state.y, 0.0)
 
-    def test_angular_acceleration_changes_angular_velocity(self) -> None:
+    def test_steering_diff_changes_heading_directly(self) -> None:
         car = Car(30.0, 10.0, 100.0, -20.0, CarState(0.0, 0.0, 0.0, 0.0))
-        car.step(acceleration=0.0, steering_acceleration_deg=90.0, dt=1.0)
-        self.assertAlmostEqual(car.state.angular_velocity, 1.57079632679)
-        self.assertAlmostEqual(car.state.heading, 1.57079632679)
+        car.step(acceleration=0.0, steering_diff_angle_deg=2.0, dt=1.0)
+        self.assertAlmostEqual(car.state.heading, 0.03490658504)
 
     def test_track_json_roundtrip(self) -> None:
         track = Track(

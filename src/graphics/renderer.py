@@ -45,6 +45,7 @@ class Renderer:
         q_table: np.ndarray | None = None,
         som_feature_points: np.ndarray | None = None,
         som_weights: np.ndarray | None = None,
+        som_weight_state: int | None = None,
         lines: Iterable[str] = (),
     ) -> None:
         pygame = self.pygame
@@ -64,6 +65,7 @@ class Renderer:
             q_table,
             som_feature_points,
             som_weights,
+            som_weight_state if som_weight_state is not None else som_state,
             lines,
         )
         pygame.display.flip()
@@ -132,6 +134,7 @@ class Renderer:
         q_table: np.ndarray | None,
         som_feature_points: np.ndarray | None,
         som_weights: np.ndarray | None,
+        som_weight_state: int | None,
         lines: Iterable[str],
     ) -> None:
         y = 16
@@ -139,13 +142,13 @@ class Renderer:
             self._text(line, x, y)
             y += 22
         if action is not None:
-            self._text(f"accel {action[0]:.1f}  ang acc {action[1]:.1f}", x, y)
+            self._text(f"accel {action[0]:.1f}  steer diff {action[1]:.1f}", x, y)
             y += 28
         if som_dim is not None:
             self._draw_som_grid(x, y, som_dim, som_state)
             y += som_dim * 18 + 24
-        if som_feature_points is not None and som_weights is not None:
-            self._draw_som_feature_map(x, y, som_feature_points, som_weights)
+        if som_weights is not None:
+            self._draw_som_feature_map(x, y, som_feature_points, som_weights, som_weight_state)
             y += 194
         if q_table is not None:
             self._draw_q_heatmap(x, y, q_table)
@@ -184,8 +187,9 @@ class Renderer:
         self,
         x: int,
         y: int,
-        feature_points: np.ndarray,
+        feature_points: np.ndarray | None,
         weights: np.ndarray,
+        active_state: int | None,
     ) -> None:
         pygame = self.pygame
         width = 230
@@ -193,14 +197,17 @@ class Renderer:
         rect = pygame.Rect(x, y, width, height)
         pygame.draw.rect(self.screen, (30, 35, 43), rect)
         pygame.draw.rect(self.screen, (102, 114, 130), rect, 1)
-        self._text("input / weights", x, y - 20)
+        title = "input / weights" if feature_points is not None else "SOM weights"
+        self._text(title, x, y - 20)
 
-        points = np.asarray(feature_points, dtype=float).reshape(-1, 2)
+        points = np.empty((0, 2), dtype=float)
+        if feature_points is not None:
+            points = np.asarray(feature_points, dtype=float).reshape(-1, 2)
         weight_points = np.asarray(weights, dtype=float).reshape(-1, 2)
-        if points.size == 0 or weight_points.size == 0:
+        if weight_points.size == 0:
             return
 
-        all_points = np.vstack([points, weight_points])
+        all_points = weight_points if points.size == 0 else np.vstack([points, weight_points])
         min_xy = np.min(all_points, axis=0)
         max_xy = np.max(all_points, axis=0)
         span = np.maximum(max_xy - min_xy, 1e-9)
@@ -209,18 +216,23 @@ class Renderer:
         max_xy += padding
         span = np.maximum(max_xy - min_xy, 1e-9)
 
-        max_dots = 700
-        if len(points) > max_dots:
-            stride = int(np.ceil(len(points) / max_dots))
-            points = points[::stride]
+        if points.size:
+            max_dots = 700
+            if len(points) > max_dots:
+                stride = int(np.ceil(len(points) / max_dots))
+                points = points[::stride]
 
-        for point in points:
-            px, py = _map_feature_point(point, min_xy, span, rect)
-            pygame.draw.circle(self.screen, (91, 169, 216), (px, py), 2)
+            for point in points:
+                px, py = _map_feature_point(point, min_xy, span, rect)
+                pygame.draw.circle(self.screen, (91, 169, 216), (px, py), 2)
 
-        for point in weight_points:
+        for index, point in enumerate(weight_points):
             px, py = _map_feature_point(point, min_xy, span, rect)
-            pygame.draw.rect(self.screen, (245, 207, 82), pygame.Rect(px - 3, py - 3, 6, 6))
+            if index == active_state:
+                pygame.draw.rect(self.screen, (246, 92, 92), pygame.Rect(px - 5, py - 5, 10, 10))
+                pygame.draw.rect(self.screen, (255, 245, 170), pygame.Rect(px - 5, py - 5, 10, 10), 1)
+            else:
+                pygame.draw.rect(self.screen, (245, 207, 82), pygame.Rect(px - 3, py - 3, 6, 6))
 
     def _text(self, text: str, x: int, y: int) -> None:
         surface = self.font.render(text, True, (226, 231, 236))

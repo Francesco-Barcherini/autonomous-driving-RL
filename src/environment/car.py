@@ -10,13 +10,12 @@ from shapely.geometry import Polygon
 
 @dataclass
 class CarState:
-    """Pose plus linear and angular velocity of the simulated car."""
+    """Pose and scalar velocity of the simulated car."""
 
     x: float
     y: float
     heading: float
     velocity: float = 0.0
-    angular_velocity: float = 0.0
 
     def copy(self) -> "CarState":
         return CarState(
@@ -24,13 +23,12 @@ class CarState:
             self.y,
             self.heading,
             self.velocity,
-            self.angular_velocity,
         )
 
 
 @dataclass
 class Car:
-    """Rectangular vehicle controlled by linear and angular acceleration."""
+    """Rectangular vehicle controlled by acceleration and heading delta."""
 
     length: float
     width: float
@@ -41,13 +39,12 @@ class Car:
     def reset(self, state: CarState) -> None:
         self.state = state.copy()
 
-    def step(self, acceleration: float, steering_acceleration_deg: float, dt: float) -> CarState:
+    def step(self, acceleration: float, steering_diff_angle_deg: float, dt: float) -> CarState:
         """Advance the car with explicit Euler integration."""
         self.state.velocity += acceleration * dt
         self.state.velocity = max(self.min_speed, min(self.max_speed, self.state.velocity))
-        self.state.angular_velocity += math.radians(steering_acceleration_deg) * dt
         self.state.heading = _wrap_angle(
-            self.state.heading + self.state.angular_velocity * dt
+            self.state.heading + math.radians(steering_diff_angle_deg)
         )
         self.state.x += math.cos(self.state.heading) * self.state.velocity * dt
         self.state.y += math.sin(self.state.heading) * self.state.velocity * dt

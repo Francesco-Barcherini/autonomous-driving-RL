@@ -44,8 +44,7 @@ def train_q_learning(
         result = env.reset()
         state = som.state_from_lidar(result.lidar)
 
-        total_reward = 0
-        print("")
+        total_reward = 0.0
 
         while not result.done:
             action_index = agent.select_action(state, rng)
@@ -60,7 +59,6 @@ def train_q_learning(
                 current_position=(env.car.state.x, env.car.state.y),
             )
             total_reward += reward
-            print(total_reward, end="\r")
             agent.update(state, action_index, reward, next_state, result.done)
 
             if view is not None:
@@ -74,6 +72,7 @@ def train_q_learning(
                     episode + 1,
                     episode_count,
                     agent,
+                    total_reward,
                     visible,
                 )
             state = next_state
@@ -131,6 +130,7 @@ class RlTrainingView:
         episode: int,
         total_episodes: int,
         agent: QAgent,
+        total_reward: float,
         visible: bool,
     ) -> None:
         if not visible:
@@ -142,14 +142,18 @@ class RlTrainingView:
             lidar=env.last_lidar,
             som_state=state,
             som_dim=som.grid_dim,
+            som_weights=som.weights,
+            som_weight_state=state,
             action=action,
             q_table=q_table,
             lines=[
                 f"episode {episode}/{total_episodes}",
                 f"step {env.steps}",
+                f"episode reward {total_reward:.2f}",
                 f"gamma {agent.gamma:.2f} alpha {agent.alpha:.2f}",
                 f"epsilon {agent.epsilon:.4f}",
                 f"beta {agent.beta:.4f} inc {agent.beta_increment:.4f}",
+                *_lidar_display_lines(som, env.last_lidar),
                 "G hides this view",
             ],
         )
@@ -157,3 +161,13 @@ class RlTrainingView:
 
     def close(self) -> None:
         self.renderer.quit()
+
+
+def _lidar_display_lines(
+    som: SomDiscretizer,
+    reading,
+) -> list[str]:
+    if reading is None:
+        return []
+    d_c, d_rl = som.display_values_from_lidar(reading)
+    return [f"d_c {d_c:.3f}", f"d_rl {d_rl:.3f}"]

@@ -55,7 +55,7 @@ class CarConfig:
     max_speed: float = 180.0
     min_speed: float = -45.0
     max_acceleration: float = 70.0
-    max_steering_acceleration_deg: float = 120.0
+    max_steering_diff_angle_deg: float = 2.0
 
 
 @dataclass
@@ -154,7 +154,10 @@ def _coerce_value(default: Any, value: Any) -> Any:
 def _apply_section(section: Any, values: dict[str, Any]) -> None:
     if isinstance(section, CarConfig) and "max_steering_rate_deg" in values:
         values = dict(values)
-        values["max_steering_acceleration_deg"] = values.pop("max_steering_rate_deg")
+        values["max_steering_diff_angle_deg"] = values.pop("max_steering_rate_deg")
+    if isinstance(section, CarConfig) and "max_steering_acceleration_deg" in values:
+        values = dict(values)
+        values["max_steering_diff_angle_deg"] = values.pop("max_steering_acceleration_deg")
     valid_fields = {item.name: item for item in fields(section)}
     for key, value in values.items():
         if key not in valid_fields:

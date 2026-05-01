@@ -61,6 +61,18 @@ class SomDiscretizer:
     def state_from_lidar(self, reading: LidarReading) -> int:
         return self.state_from_features(self.features_from_lidar(reading))
 
+    def display_values_from_lidar(self, reading: LidarReading) -> tuple[float, float]:
+        """Return d_c in [0, 1] and d_rl in [-1, 1] for UI display."""
+        d_c, d_rl = self.features_from_lidar(reading)
+        d_c_span = max(self.max_d_c - self.min_d_c, 1e-12)
+        max_abs_drl = max(abs(self.min_difference_r_l), abs(self.max_difference_r_l), 1e-12)
+        d_c_norm = (d_c - self.min_d_c) / d_c_span
+        d_rl_norm = d_rl / max_abs_drl
+        return (
+            float(np.clip(d_c_norm, 0.0, 1.0)),
+            float(np.clip(d_rl_norm, -1.0, 1.0)),
+        )
+
     def save(self, directory: Path, metadata: dict | None = None) -> Path:
         directory.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

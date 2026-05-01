@@ -11,12 +11,12 @@ class ActionSpaceTests(unittest.TestCase):
         self.assertEqual(len(actions), 27)
         self.assertEqual(
             actions[0],
-            (-config.car.max_acceleration, -config.car.max_steering_acceleration_deg),
+            (-config.car.max_acceleration, -config.car.max_steering_diff_angle_deg),
         )
         self.assertEqual(actions[13], (0.0, 0.0))
         self.assertEqual(
             actions[-1],
-            (config.car.max_acceleration, config.car.max_steering_acceleration_deg),
+            (config.car.max_acceleration, config.car.max_steering_diff_angle_deg),
         )
 
 

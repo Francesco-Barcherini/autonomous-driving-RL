@@ -31,7 +31,7 @@ width = 18.0
 max_speed = 100.0
 min_speed = 0.0
 max_acceleration = 20.0
-max_steering_acceleration_deg = 10.0
+max_steering_diff_angle_deg = 2.0
 
 [lidar]
 max_distance = 100.0

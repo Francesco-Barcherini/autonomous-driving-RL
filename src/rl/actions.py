@@ -11,7 +11,7 @@ from src.config.settings import AppConfig
 
 @dataclass(frozen=True)
 class ActionSpace:
-    """Cartesian product of linear and angular accelerations."""
+    """Cartesian product of acceleration and steering angle deltas."""
 
     actions: tuple[tuple[float, float], ...]
 
@@ -22,16 +22,16 @@ class ActionSpace:
             0.0,
             float(config.car.max_acceleration),
         )
-        angular_accelerations = np.linspace(
-            -float(config.car.max_steering_acceleration_deg),
-            float(config.car.max_steering_acceleration_deg),
+        steering_diffs = np.linspace(
+            -float(config.car.max_steering_diff_angle_deg),
+            float(config.car.max_steering_diff_angle_deg),
             9,
         )
         return cls(
             tuple(
-                (accel, float(angular_acceleration))
+                (accel, float(steering_diff))
                 for accel in accelerations
-                for angular_acceleration in angular_accelerations
+                for steering_diff in steering_diffs
             )
         )
 

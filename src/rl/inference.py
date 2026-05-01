@@ -32,7 +32,8 @@ def run_inference(
     selected_som = som_path or (q_bundle.som_path if q_bundle.som_path else None)
     som = load_som_model(selected_som, config)
     actions = q_bundle.actions
-    if actions.shape[0] != q_bundle.q_table.shape[1]:
+    max_steering = float(config.car.max_steering_diff_angle_deg)
+    if actions.shape[0] != q_bundle.q_table.shape[1] or np.max(np.abs(actions[:, 1])) > max_steering:
         actions = ActionSpace.from_config(config).as_array()
 
     renderer = Renderer(config, "Inference")
@@ -80,10 +81,13 @@ def run_inference(
             lidar=result.lidar,
             som_state=state,
             som_dim=som.grid_dim,
+            som_weights=som.weights,
+            som_weight_state=state,
             action=action,
             lines=[
                 f"track {current_index}: {track_pairs[current_index][0].name}",
                 f"state {state}  action {action_index}",
+                *_lidar_display_lines(som, result.lidar),
                 f"result {result.reason}",
                 "Esc quit  R reset",
                 "0-9 select track",
@@ -129,3 +133,8 @@ def _event_digit(event: pygame.event.Event) -> int | None:
         pygame.K_KP9: 9,
     }
     return keypad_digits.get(event.key)
+
+
+def _lidar_display_lines(som, reading) -> list[str]:
+    d_c, d_rl = som.display_values_from_lidar(reading)
+    return [f"d_c {d_c:.3f}", f"d_rl {d_rl:.3f}"]
