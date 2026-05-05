@@ -28,45 +28,94 @@ editor_min_point_distance = 8.0
 [car]
 length = 34.0
 width = 18.0
-max_speed = 50.0
+max_speed = 30.0
 min_speed = 0.0
-max_acceleration = 10.0
+max_acceleration = 3.0
 max_steering_diff_angle_deg = 2.0
 
 [lidar]
-max_distance = 100.0
+max_distance = 150.0
 side_angle_deg = 45.0
 
 [som]
 dim_grid_neurons = 6
 factor_samples = 10.0
-max_d_c = 100.0
+max_d_c = 150.0
 min_d_c = 0.0
-max_difference_r_l = 100.0
-min_difference_r_l = -100.0
+max_difference_r_l = 150.0
+min_difference_r_l = -150.0
 learning_rate = 1.0
 random_seed = 42
 
 [rl]
-reward_step = -0.01
-reward_fail = -100.0
-reward_success = 100.0
-reward_safe = 0.5
-reward_unsafe = -0.5
-reward_progress = 0.8
-reward_regress = -0.8
-dc_threshold_safe = 0.5
-drl_threshold_safe = 0.2
-dc_threshold_unsafe = 0.3
+# # simplest
+# reward_step = -0.1
+# reward_fail = -100.0
+# reward_success = 100.0
+# reward_safe = 0.1
+# reward_unsafe = -0.1
+# reward_progress = 10.0
+# reward_regress = -10.0
+# reward_stuck = -1.0
+# num_stuck = 3
+# dc_threshold_safe = 0.7
+# drl_threshold_safe = 0.3
+# dc_threshold_unsafe = 0.5
+# drl_threshold_unsafe = 0.5
+# # non_obstacles
+# reward_step = -0.1
+# reward_fail = -500.0
+# reward_success = 500.0
+# reward_safe = 0.1
+# reward_unsafe = -0.1
+# reward_progress = 7.5
+# reward_regress = -7.5
+# reward_stuck = -1.0
+# num_stuck = 3
+# dc_threshold_safe = 0.7
+# drl_threshold_safe = 0.3
+# dc_threshold_unsafe = 0.5
+# drl_threshold_unsafe = 0.5
+# resume_epsilon = 0.5
+# resume_beta = 0.5
+# # obstacles_easy / hard
+# reward_step = -0.1
+# reward_fail = -500.0
+# reward_success = 1000.0
+# reward_safe = 0.2
+# reward_unsafe = -0.2
+# reward_progress = 10.0
+# reward_regress = -10.0
+# reward_stuck = -1.0
+# num_stuck = 3
+# dc_threshold_safe = 0.7
+# drl_threshold_safe = 0.3
+# dc_threshold_unsafe = 0.5
+# drl_threshold_unsafe = 0.5
+# resume_epsilon = 1.0
+# resume_beta = 0.0
+# central_obstacles
+reward_step = -0.1
+reward_fail = -500.0
+reward_success = 1000.0
+reward_safe = 0.2
+reward_unsafe = -0.2
+reward_progress = 10.0
+reward_regress = -10.0
+reward_stuck = -1.0
+num_stuck = 3
+dc_threshold_safe = 0.7
+drl_threshold_safe = 0.3
+dc_threshold_unsafe = 0.5
 drl_threshold_unsafe = 0.5
+resume_epsilon = 0.5
+resume_beta = 0.5
 gamma = 0.9
 alpha = 0.1
 epsilon = 1.0
 epsilon_decay = 0.97
 beta = 0.0
 beta_increment = 0.01
-resume_epsilon = 0.5
-resume_beta = 0.5
 num_episodes = 1000
 max_steps_per_episode = 10000
 checkpoint_episodes = 50

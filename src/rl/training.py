@@ -12,7 +12,13 @@ from src.environment.track import Track, load_tracks
 from src.graphics.renderer import Renderer
 from src.kohonen.som import SomDiscretizer, load_som_model
 from src.rl.actions import ActionSpace
-from src.rl.q_learning import QAgent, compute_reward, load_q_table, save_q_table
+from src.rl.q_learning import (
+    QAgent,
+    compute_reward,
+    load_q_table,
+    nearest_centerline_index,
+    save_q_table,
+)
 
 
 def train_q_learning(
@@ -63,11 +69,25 @@ def train_q_learning(
         state = som.state_from_lidar(result.lidar)
 
         total_reward = 0.0
+        stuck_steps = 0
 
         while not result.done:
             action_index = agent.select_action(state, rng)
             action = actions[action_index]
+            previous_index = nearest_centerline_index(
+                env.track,
+                (env.car.state.x, env.car.state.y),
+            )
             result = env.step(action)
+            current_index = nearest_centerline_index(
+                env.track,
+                (env.car.state.x, env.car.state.y),
+            )
+            if current_index > previous_index:
+                stuck_steps = 0
+            else:
+                stuck_steps += 1
+            stuck_penalty = config.rl.num_stuck > 0 and stuck_steps % config.rl.num_stuck == 0
             next_state = som.state_from_lidar(result.lidar)
             reward = compute_reward(
                 config,
@@ -75,6 +95,8 @@ def train_q_learning(
                 track=env.track,
                 previous_position=env.previous_position,
                 current_position=(env.car.state.x, env.car.state.y),
+                stuck_penalty=stuck_penalty,
+                action=action,
             )
             total_reward += reward
             agent.update(state, action_index, reward, next_state, result.done)
@@ -98,6 +120,7 @@ def train_q_learning(
                     target_episode,
                     agent,
                     total_reward,
+                    stuck_steps,
                     visible,
                 )
             state = next_state
@@ -156,6 +179,7 @@ class RlTrainingView:
         total_episodes: int,
         agent: QAgent,
         total_reward: float,
+        stuck_steps: int,
         visible: bool,
     ) -> None:
         if not visible:
@@ -174,6 +198,7 @@ class RlTrainingView:
                 f"episode {episode}/{total_episodes}",
                 f"step {env.steps}",
                 f"episode reward {total_reward:.2f}",
+                f"stuck steps {stuck_steps}",
                 f"gamma {agent.gamma:.2f} alpha {agent.alpha:.2f}",
                 f"epsilon {agent.epsilon:.4f}",
                 f"beta {agent.beta:.4f} inc {agent.beta_increment:.4f}",

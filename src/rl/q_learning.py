@@ -104,6 +104,8 @@ def compute_reward(
     track: Track | None = None,
     previous_position: tuple[float, float] | None = None,
     current_position: tuple[float, float] | None = None,
+    stuck_penalty: bool = False,
+    action: tuple[float, float] | None = None,
 ) -> float:
     reward = float(config.rl.reward_step)
     if result.done:
@@ -112,12 +114,22 @@ def compute_reward(
 
     if track is not None and previous_position is not None and current_position is not None:
         reward += progress_reward(config, track, previous_position, current_position)
+    if stuck_penalty:
+        reward += config.rl.reward_stuck
 
     dc_ratio, drl_ratio = safety_ratios(config, result.lidar)
     if dc_ratio > config.rl.dc_threshold_safe and drl_ratio < config.rl.drl_threshold_safe:
         reward += config.rl.reward_safe
     if dc_ratio < config.rl.dc_threshold_unsafe or drl_ratio > config.rl.drl_threshold_unsafe:
         reward += config.rl.reward_unsafe
+
+    # # compute a negative reward proportional to the action steering to encourage smoother driving
+    # if action is not None:
+    #     steering_diff_angle = abs(action[1])
+    #     max_steering = float(config.car.max_steering_diff_angle_deg)
+    #     if max_steering > 0.0:
+    #         #reward += config.rl.reward_steering * (steering_diff_angle / max_steering)
+    #         reward += -0.5 * (steering_diff_angle / max_steering)
     return reward
 
 
@@ -130,9 +142,9 @@ def progress_reward(
     previous_index = nearest_centerline_index(track, previous_position)
     current_index = nearest_centerline_index(track, current_position)
     if current_index > previous_index:
-        return float(config.rl.reward_progress)
+        return float(config.rl.reward_progress) * float(current_index - previous_index)
     if current_index < previous_index:
-        return float(config.rl.reward_regress)
+        return float(config.rl.reward_regress) * float(previous_index - current_index)
     return 0.0
 
 

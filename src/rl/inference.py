@@ -84,6 +84,7 @@ def run_inference(
             som_weights=som.weights,
             som_weight_state=state,
             action=action,
+            q_table=q_bundle.q_table,
             lines=[
                 f"track {current_index}: {track_pairs[current_index][0].name}",
                 f"state {state}  action {action_index}",

@@ -106,6 +106,18 @@ class EnvironmentTests(unittest.TestCase):
         self.assertGreater(reading.center.distance, 55.0)
         self.assertLess(reading.center.distance, 65.0)
 
+    def test_lidar_ignores_finish_line(self) -> None:
+        track = Track(
+            "finish_lidar",
+            100.0,
+            [(0.0, 0.0), (300.0, 0.0)],
+            [(0.0, -50.0), (0.0, 50.0)],
+            [(300.0, -50.0), (300.0, 50.0)],
+            [],
+        )
+        reading = Lidar(max_distance=250.0).scan(CarState(260.0, 0.0, 0.0), track)
+        self.assertAlmostEqual(reading.center.distance, 250.0)
+
 
 if __name__ == "__main__":
     unittest.main()
