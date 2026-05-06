@@ -169,11 +169,13 @@ def save_q_table(
     som_path: Path | None,
     episode: int,
     checkpoint: bool = False,
+    checkpoint_rewards: list[tuple[int, str, float]] | None = None,
 ) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     prefix = f"qtable_checkpoint_{episode:06d}" if checkpoint else "qtable"
     path = directory / f"{prefix}_{timestamp}.npz"
+    reward_rows = checkpoint_rewards or []
     np.savez(
         path,
         q_table=agent.q_table,
@@ -183,6 +185,9 @@ def save_q_table(
         episode=np.asarray(episode),
         som_path=np.asarray(str(som_path or "")),
         config=np.asarray(json.dumps(config.to_plain_dict(), default=str)),
+        checkpoint_reward_episodes=np.asarray([row[0] for row in reward_rows], dtype=int),
+        checkpoint_reward_tracks=np.asarray([row[1] for row in reward_rows], dtype=str),
+        checkpoint_reward_values=np.asarray([row[2] for row in reward_rows], dtype=float),
     )
     return path
 

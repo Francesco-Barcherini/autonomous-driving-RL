@@ -31,7 +31,6 @@ def train_q_learning(
     resume: bool = True,
 ) -> Path:
     config.ensure_output_dirs()
-    config.simulation.max_steps_per_episode = config.rl.max_steps_per_episode
     som = load_som_model(som_path, config)
     track_pairs = load_tracks(config.tracks_dir)
     if not track_pairs:
@@ -54,6 +53,7 @@ def train_q_learning(
     last_hidden_print: int | None = None
 
     last_path = None
+    checkpoint_rewards: list[tuple[int, str, float]] = []
     for episode in range(episode_count):
         global_episode = start_episode + episode + 1
         last_hidden_print = _print_hidden_episode(
@@ -63,7 +63,9 @@ def train_q_learning(
             target_episode,
             last_hidden_print,
         )
-        track = tracks[episode % len(tracks)]
+        track_index = episode % len(tracks)
+        track = tracks[track_index]
+        track_name = track_pairs[track_index][0].name
         env = DrivingEnv(config, track, rng)
         result = env.reset()
         state = som.state_from_lidar(result.lidar)
@@ -127,6 +129,7 @@ def train_q_learning(
 
         agent.decay_epsilon()
         agent.increment_beta()
+        checkpoint_rewards.append((global_episode, track_name, total_reward))
         if global_episode % config.rl.checkpoint_episodes == 0:
             last_path = save_q_table(
                 config.rl_dir,
@@ -136,7 +139,9 @@ def train_q_learning(
                 som.source_path,
                 global_episode,
                 checkpoint=True,
+                checkpoint_rewards=checkpoint_rewards,
             )
+            checkpoint_rewards = []
 
     if view is not None:
         view.close()
@@ -149,6 +154,7 @@ def train_q_learning(
         som.source_path,
         target_episode,
         checkpoint=False,
+        checkpoint_rewards=checkpoint_rewards,
     ) or last_path
 
 
