@@ -12,10 +12,13 @@ from minisom import MiniSom
 
 from src.config.settings import AppConfig
 from src.environment.car import Car, CarState
+from src.environment.env import DrivingEnv
 from src.environment.lidar import Lidar, LidarReading
 from src.environment.track import Track, load_tracks
 from src.graphics.renderer import Renderer
-from src.kohonen.som import SomDiscretizer, discretizer_from_config
+from src.kohonen.som import SomDiscretizer, discretizer_from_config, load_som_model
+from src.rl.actions import ActionSpace
+from src.rl.q_learning import load_q_table
 
 
 @dataclass
@@ -73,10 +76,76 @@ def generate_som_samples(
     return samples
 
 
+def generate_policy_som_samples(
+    config: AppConfig,
+    tracks: list[Track],
+    q_table_path: str | Path | None,
+    rng: np.random.Generator,
+    headless: bool = False,
+) -> tuple[list[SomSample], Path]:
+    placeholder = discretizer_from_config(
+        config,
+        np.zeros((config.som.dim_grid_neurons, config.som.dim_grid_neurons, 2), dtype=float),
+    )
+    q_bundle = load_q_table(q_table_path, config)
+    policy_som = load_som_model(q_bundle.som_path or None, config)
+    if q_bundle.q_table.shape[0] != policy_som.num_states:
+        raise ValueError(
+            "Q-table state count does not match its SOM model: "
+            f"{q_bundle.q_table.shape[0]} != {policy_som.num_states}"
+        )
+    actions = _actions_for_q_table(config, q_bundle.actions, q_bundle.q_table.shape[1])
+    samples: list[SomSample] = []
+    view = None if headless else SomCollectionView(config)
+    visible = True
+    episode = 0
+
+    for track in tracks:
+        env = DrivingEnv(config, track, rng)
+        result = env.reset(random_start=False)
+        episode += 1
+
+
+        while not result.done:# and env.steps < config.rl.max_steps_per_episode:
+            state = policy_som.state_from_lidar(result.lidar)
+            action_index = int(np.argmax(q_bundle.q_table[state]))
+            action = tuple(float(value) for value in actions[action_index])
+            result = env.step(action)
+            features = np.asarray(result.lidar.vector, dtype=float)
+            if features[0] < 1.0 or rng.random() < 0.1:
+                samples.append(
+                    SomSample(
+                        track=env.track,
+                        state=env.car.state.copy(),
+                        lidar=result.lidar,
+                        features=features,
+                        normalized=placeholder.normalize_features(features),
+                    )
+                )
+            collected = len(samples)
+            print(f"collected policy SOM samples {collected}, episode {episode}/{len(tracks)}", end="\r")
+            if view is not None:
+                visible = view.process_events(visible)
+                view.draw(
+                    env,
+                    collected,
+                    len(tracks),
+                    episode,
+                    state,
+                    action_index,
+                    visible,
+                )
+
+    if view is not None:
+        view.close()
+    return samples, q_bundle.source_path
+
+
 def train_som(
     config: AppConfig,
     seed: int | None = None,
     headless: bool = False,
+    q_table_path: str | Path | None = None,
 ) -> Path:
     config.ensure_output_dirs()
     track_pairs = load_tracks(config.tracks_dir)
@@ -84,7 +153,20 @@ def train_som(
         raise FileNotFoundError("no tracks found in out/tracks; run draw_tracks.py first")
     tracks = [track for _, track in track_pairs]
     rng = np.random.default_rng(seed if seed is not None else config.som.random_seed)
-    samples = generate_som_samples(config, tracks, rng)
+    if q_table_path is None:
+        samples = generate_som_samples(config, tracks, rng)
+        sample_source = "random"
+        used_q_table_path = ""
+    else:
+        resolved_q_table_path = None if str(q_table_path) == "" else q_table_path
+        samples, used_q_table_path = generate_policy_som_samples(
+            config,
+            tracks,
+            resolved_q_table_path,
+            rng,
+            headless=headless,
+        )
+        sample_source = "policy"
     data = np.asarray([sample.normalized for sample in samples], dtype=float)
 
     grid_dim = config.som.dim_grid_neurons
@@ -143,6 +225,8 @@ def train_som(
         metadata={
             "num_samples": len(samples),
             "seed": seed if seed is not None else config.som.random_seed,
+            "sample_source": sample_source,
+            "q_table_path": str(used_q_table_path),
             "tracks": [path.name for path, _ in track_pairs],
         },
     )
@@ -206,6 +290,69 @@ class SomTrainingView:
 
     def close(self) -> None:
         self.renderer.quit()
+
+
+class SomCollectionView:
+    """Optional simulation view while collecting SOM samples from a policy."""
+
+    def __init__(self, config: AppConfig) -> None:
+        self.renderer = Renderer(config, "SOM Policy Sample Collection")
+
+    def process_events(self, visible: bool) -> bool:
+        pygame = self.renderer.pygame
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
+                return not visible
+        return visible
+
+    def draw(
+        self,
+        env: DrivingEnv,
+        count: int,
+        total: int,
+        episode: int,
+        state: int,
+        action_index: int,
+        visible: bool,
+    ) -> None:
+        if not visible:
+            return
+        self.renderer.draw(
+            env.track,
+            car=env.car,
+            lidar=env.last_lidar,
+            lines=[
+                f"collecting samples {count}/{total}",
+                f"episode {episode}",
+                f"step {env.steps}",
+                f"policy state {state}",
+                f"policy action {action_index}",
+                "G hides this view",
+            ],
+        )
+        self.renderer.tick()
+
+    def close(self) -> None:
+        self.renderer.quit()
+
+
+def _actions_for_q_table(
+    config: AppConfig,
+    saved_actions: np.ndarray,
+    num_actions: int,
+) -> np.ndarray:
+    actions = np.asarray(saved_actions, dtype=float)
+    if actions.shape[0] == num_actions:
+        return actions
+    configured_actions = ActionSpace.from_config(config).as_array()
+    if configured_actions.shape[0] == num_actions:
+        return configured_actions
+    raise ValueError(
+        f"Q-table has {num_actions} actions, but saved actions have "
+        f"{actions.shape[0]} and configured actions have {configured_actions.shape[0]}"
+    )
 
 
 def _current_som_rates(som: MiniSom, iteration: int, total: int) -> tuple[float, float]:

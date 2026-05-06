@@ -14,12 +14,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default="config.toml", help="path to TOML configuration")
     parser.add_argument("--seed", type=int, default=None, help="random seed override")
     parser.add_argument("--headless", action="store_true", help="disable Pygame debug window")
+    parser.add_argument(
+        "--qtable",
+        nargs="?",
+        const="",
+        default=None,
+        help="collect SOM samples by running a Q-table policy; optional path, defaults to latest",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    path = train_som(load_config(args.config), seed=args.seed, headless=args.headless)
+    path = train_som(
+        load_config(args.config),
+        seed=args.seed,
+        headless=args.headless,
+        q_table_path=args.qtable,
+    )
     print(f"saved SOM model: {path}")
 
 

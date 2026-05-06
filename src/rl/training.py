@@ -54,6 +54,7 @@ def train_q_learning(
 
     last_path = None
     checkpoint_rewards: list[tuple[int, str, float]] = []
+    total_reward = 0.0
     for episode in range(episode_count):
         global_episode = start_episode + episode + 1
         last_hidden_print = _print_hidden_episode(
@@ -62,6 +63,7 @@ def train_q_learning(
             global_episode,
             target_episode,
             last_hidden_print,
+            total_reward,
         )
         track_index = episode % len(tracks)
         track = tracks[track_index]
@@ -111,6 +113,7 @@ def train_q_learning(
                     global_episode,
                     target_episode,
                     last_hidden_print,
+                    total_reward,
                 )
                 view.draw(
                     env,
@@ -268,10 +271,11 @@ def _print_hidden_episode(
     episode: int,
     target_episode: int,
     last_printed_episode: int | None,
+    total_reward: float,
 ) -> int | None:
     if view is not None and visible:
         return last_printed_episode
     if last_printed_episode != episode:
-        print(f"episode {episode}/{target_episode}")
+        print(f"episode {episode}/{target_episode}, prev total reward: {total_reward:.2f}")
         return episode
     return last_printed_episode

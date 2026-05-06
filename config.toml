@@ -29,7 +29,7 @@ width = 18.0
 max_speed = 30.0
 min_speed = 0.0
 max_acceleration = 3.0
-max_steering_diff_angle_deg = 2.0
+max_steering_diff_angle_deg = 5.0
 
 [lidar]
 max_distance = 150.0
@@ -42,20 +42,20 @@ learning_rate = 1.0
 random_seed = 42
 
 [rl]
-# # simplest
-# reward_step = -0.1
-# reward_fail = -100.0
-# reward_success = 100.0
-# reward_safe = 0.1
-# reward_unsafe = -0.1
-# reward_progress = 10.0
-# reward_regress = -10.0
-# reward_stuck = -1.0
-# num_stuck = 3
-# dc_threshold_safe = 0.7
-# drl_threshold_safe = 0.3
-# dc_threshold_unsafe = 0.5
-# drl_threshold_unsafe = 0.5
+# simplest
+reward_step = -0.1
+reward_fail = -100.0
+reward_success = 100.0
+reward_safe = 0.1
+reward_unsafe = -0.1
+reward_progress = 10.0
+reward_regress = -10.0
+reward_stuck = -1.0
+num_stuck = 3
+dc_threshold_safe = 0.7
+drl_threshold_safe = 0.3
+dc_threshold_unsafe = 0.5
+drl_threshold_unsafe = 0.5
 
 # # non_obstacles
 # reward_step = -0.1
@@ -91,22 +91,23 @@ random_seed = 42
 # resume_epsilon = 1.0
 # resume_beta = 0.0
 
-# central_obstacles
-reward_step = -0.1
-reward_fail = -500.0
-reward_success = 1000.0
-reward_safe = 0.2
-reward_unsafe = -0.2
-reward_progress = 10.0
-reward_regress = -10.0
-reward_stuck = -1.0
-num_stuck = 3
-dc_threshold_safe = 0.7
-drl_threshold_safe = 0.3
-dc_threshold_unsafe = 0.5
-drl_threshold_unsafe = 0.5
-resume_epsilon = 0.5
-resume_beta = 0.5
+# # central_obstacles
+# reward_step = -0.1
+# reward_fail = -500.0
+# reward_success = 1000.0
+# reward_safe = 0.2
+# reward_unsafe = -0.2
+# reward_progress = 10.0
+# reward_regress = -10.0
+# reward_stuck = -1.0
+# num_stuck = 3
+# dc_threshold_safe = 0.7
+# drl_threshold_safe = 0.3
+# dc_threshold_unsafe = 0.5
+# drl_threshold_unsafe = 0.5
+# resume_epsilon = 0.5
+# resume_beta = 0.5
+
 gamma = 0.9
 alpha = 0.1
 epsilon = 1.0
