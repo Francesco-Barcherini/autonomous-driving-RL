@@ -123,13 +123,21 @@ def compute_reward(
     if dc_ratio < config.rl.dc_threshold_unsafe or drl_ratio > config.rl.drl_threshold_unsafe:
         reward += config.rl.reward_unsafe
 
-    # # compute a negative reward proportional to the action steering to encourage smoother driving
     # if action is not None:
     #     steering_diff_angle = abs(action[1])
     #     max_steering = float(config.car.max_steering_diff_angle_deg)
     #     if max_steering > 0.0:
     #         #reward += config.rl.reward_steering * (steering_diff_angle / max_steering)
     #         reward += -0.5 * (steering_diff_angle / max_steering)
+
+    # if dc_ratio < drl_ratio * config.rl.front_blocked_drl_ratio:
+    #     reward += config.rl.reward_front_blocked
+    #     print("FRONT BLOCK")
+    # if action is not None and dc_ratio < config.rl.dc_threshold_unsafe:
+    #     max_steering = max(float(config.car.max_steering_diff_angle_deg), 1e-12)
+    #     steering_ratio = min(abs(float(action[1])) / max_steering, 1.0)
+    #     reward += config.rl.reward_front_unsafe_steering * steering_ratio
+    #     print(f"STEER: reward={reward:.2f}")
     return reward
 
 

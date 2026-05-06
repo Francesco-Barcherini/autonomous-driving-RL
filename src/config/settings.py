@@ -80,11 +80,14 @@ class RlConfig:
     reward_progress: float = 0.25
     reward_regress: float = -0.25
     reward_stuck: float = -1.0
+    # reward_front_blocked: float = -0.2
+    # reward_front_unsafe_steering: float = 0.3
     num_stuck: int = 3
     dc_threshold_safe: float = 0.5
     drl_threshold_safe: float = 0.2
     dc_threshold_unsafe: float = 0.3
     drl_threshold_unsafe: float = 0.5
+    # front_blocked_drl_ratio: float = 1.0
     gamma: float = 0.9
     alpha: float = 0.1
     epsilon: float = 1.0

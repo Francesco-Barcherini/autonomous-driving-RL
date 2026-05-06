@@ -169,8 +169,8 @@ class Renderer:
 
     def _draw_q_heatmap(self, x: int, y: int, q_table: np.ndarray) -> None:
         pygame = self.pygame
-        rows = min(q_table.shape[0], 36)
-        cols = min(q_table.shape[1], 27)
+        rows = q_table.shape[0]
+        cols = q_table.shape[1]
         cell = 6
         values = q_table[:rows, :cols]
         max_abs = float(np.max(np.abs(values))) if values.size else 1.0
