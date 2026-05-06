@@ -21,7 +21,8 @@ class Renderer:
         pygame.init()
         self.config = config
         self.screen = pygame.display.set_mode(
-            (config.graphics.screen_width, config.graphics.screen_height)
+            (config.graphics.screen_width, config.graphics.screen_height),
+            pygame.RESIZABLE,
         )
         pygame.display.set_caption(caption)
         self.clock = pygame.time.Clock()
@@ -56,7 +57,8 @@ class Renderer:
         if car is not None:
             self._draw_car(car)
         self._draw_obstacles(track.obstacles)
-        panel_x = self.config.graphics.screen_width - 270
+        screen_width, _ = self.screen.get_size()
+        panel_x = max(16, screen_width - 270)
         self._draw_panel(
             panel_x,
             som_state,
@@ -233,6 +235,9 @@ class Renderer:
                 pygame.draw.rect(self.screen, (255, 245, 170), pygame.Rect(px - 5, py - 5, 10, 10), 1)
             else:
                 pygame.draw.rect(self.screen, (245, 207, 82), pygame.Rect(px - 3, py - 3, 6, 6))
+        if active_state is not None:
+            d_c, d_rl = weight_points[active_state]
+            self._text(f"d_c_som: {d_c:.2f} d_rl_som: {d_rl:.2f}", x, y + height + 8)
 
     def _text(self, text: str, x: int, y: int) -> None:
         surface = self.font.render(text, True, (226, 231, 236))

@@ -113,6 +113,6 @@ class DrivingEnv:
             return "off_track"
         if self.track.obstacle_hit(polygon):
             return "collision"
-        if self.steps >= self.config.simulation.max_steps_per_episode:
+        if self.steps >= self.config.rl.max_steps_per_episode:
             return "timeout"
         return "running"

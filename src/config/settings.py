@@ -23,7 +23,6 @@ class PathsConfig:
 @dataclass
 class SimulationConfig:
     dt: float = 0.1
-    max_steps_per_episode: int = 1000
     random_seed: int = 42
 
 
@@ -42,7 +41,6 @@ class GraphicsConfig:
 
 @dataclass
 class TrackConfig:
-    num_tracks: int = 5
     track_width: float = 80.0
     obstacle_radius: float = 13.0
     editor_min_point_distance: float = 8.0
@@ -60,7 +58,7 @@ class CarConfig:
 
 @dataclass
 class LidarConfig:
-    max_distance: float = 220.0
+    max_distance: float = 150.0
     side_angle_deg: float = 45.0
 
 
@@ -68,10 +66,6 @@ class LidarConfig:
 class SomConfig:
     dim_grid_neurons: int = 6
     factor_samples: float = 2.0
-    max_d_c: float = 220.0
-    min_d_c: float = 0.0
-    max_difference_r_l: float = 220.0
-    min_difference_r_l: float = -220.0
     learning_rate: float = 1.0
     random_seed: int = 42
 
@@ -85,6 +79,8 @@ class RlConfig:
     reward_unsafe: float = -1.0
     reward_progress: float = 0.25
     reward_regress: float = -0.25
+    reward_stuck: float = -1.0
+    num_stuck: int = 3
     dc_threshold_safe: float = 0.5
     drl_threshold_safe: float = 0.2
     dc_threshold_unsafe: float = 0.3
@@ -132,6 +128,10 @@ class AppConfig:
     @property
     def rl_dir(self) -> Path:
         return self.resolve_path(self.paths.rl_dir)
+
+    @property
+    def track_count(self) -> int:
+        return len(list(self.tracks_dir.glob("*.json")))
 
     def ensure_output_dirs(self) -> None:
         """Create output directories used by scripts."""

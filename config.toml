@@ -5,12 +5,11 @@ rl_dir = "out/rl"
 
 [simulation]
 dt = 0.1
-max_steps_per_episode = 10000
 random_seed = 42
 
 [graphics]
-screen_width = 1100
-screen_height = 760
+screen_width = 1200
+screen_height = 850
 fps = 60
 background = [18, 22, 28]
 road_color = [68, 72, 78]
@@ -20,7 +19,6 @@ lidar_color = [69, 182, 235]
 obstacle_color = [220, 82, 82]
 
 [track]
-num_tracks = 1
 track_width = 100.0
 obstacle_radius = 11.0
 editor_min_point_distance = 8.0
@@ -39,11 +37,7 @@ side_angle_deg = 45.0
 
 [som]
 dim_grid_neurons = 6
-factor_samples = 10.0
-max_d_c = 150.0
-min_d_c = 0.0
-max_difference_r_l = 150.0
-min_difference_r_l = -150.0
+factor_samples = 40.0
 learning_rate = 1.0
 random_seed = 42
 
@@ -62,6 +56,7 @@ random_seed = 42
 # drl_threshold_safe = 0.3
 # dc_threshold_unsafe = 0.5
 # drl_threshold_unsafe = 0.5
+
 # # non_obstacles
 # reward_step = -0.1
 # reward_fail = -500.0
@@ -78,6 +73,7 @@ random_seed = 42
 # drl_threshold_unsafe = 0.5
 # resume_epsilon = 0.5
 # resume_beta = 0.5
+
 # # obstacles_easy / hard
 # reward_step = -0.1
 # reward_fail = -500.0
@@ -94,6 +90,7 @@ random_seed = 42
 # drl_threshold_unsafe = 0.5
 # resume_epsilon = 1.0
 # resume_beta = 0.0
+
 # central_obstacles
 reward_step = -0.1
 reward_fail = -500.0

@@ -48,6 +48,7 @@ def generate_som_samples(
         np.zeros((config.som.dim_grid_neurons, config.som.dim_grid_neurons, 2), dtype=float),
     )
     samples: list[SomSample] = []
+    progress_interval = max(total // 20, 1)
     for index in range(total):
         track = tracks[index % len(tracks)]
         x, y, heading = track.sample_drivable_point(
@@ -66,6 +67,9 @@ def generate_som_samples(
                 normalized=placeholder.normalize_features(features),
             )
         )
+        collected = len(samples)
+        if collected == 1 or collected % progress_interval == 0 or collected == total:
+            print(f"collected SOM samples {collected}/{total}")
     return samples
 
 
@@ -92,7 +96,7 @@ def train_som(
         learning_rate=config.som.learning_rate,
         decay_function="inverse_decay_to_zero",
         neighborhood_function="gaussian",
-        activation_distance="cosine",
+        activation_distance="euclidean",
         random_seed=seed if seed is not None else config.som.random_seed,
         sigma_decay_function="inverse_decay_to_one",
     )
@@ -114,21 +118,18 @@ def train_som(
             if visible or iteration % 10 == 0:
                 sigma, learning_rate = _current_som_rates(som, iteration, total)
                 weights = som.get_weights()
+                active_row, active_col = SomDiscretizer(
+                    weights=weights,
+                    grid_dim=grid_dim,
+                    max_distance=1.0,
+                ).winner(vector)
                 view.draw(
                     samples[sample_index],
                     iteration + 1,
                     total,
                     sigma,
                     learning_rate,
-                    SomDiscretizer(
-                        weights=weights,
-                        grid_dim=grid_dim,
-                        norm_scale=1.0,
-                        min_d_c=0.0,
-                        max_d_c=1.0,
-                        min_difference_r_l=-1.0,
-                        max_difference_r_l=1.0,
-                    ).state_from_features(vector),
+                    active_row * grid_dim + active_col,
                     data,
                     weights,
                     visible,
