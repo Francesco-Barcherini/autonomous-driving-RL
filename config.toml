@@ -120,3 +120,6 @@ beta_increment = 0.01
 num_episodes = 1000
 max_steps_per_episode = 4000
 checkpoint_episodes = 50
+
+[analysis]
+safety_margin_ignore_steps = 200

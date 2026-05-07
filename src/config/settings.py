@@ -102,6 +102,11 @@ class RlConfig:
 
 
 @dataclass
+class AnalysisConfig:
+    safety_margin_ignore_steps: int = 200
+
+
+@dataclass
 class AppConfig:
     paths: PathsConfig = field(default_factory=PathsConfig)
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
@@ -111,6 +116,7 @@ class AppConfig:
     lidar: LidarConfig = field(default_factory=LidarConfig)
     som: SomConfig = field(default_factory=SomConfig)
     rl: RlConfig = field(default_factory=RlConfig)
+    analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     root_dir: Path = field(default_factory=lambda: Path.cwd())
 
     def resolve_path(self, value: str | Path) -> Path:

@@ -2,3 +2,4 @@ numpy
 pygame
 shapely
 minisom
+matplotlib
