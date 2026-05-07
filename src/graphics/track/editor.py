@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pygame
 
 from src.config.settings import AppConfig
-from src.environment.track import Obstacle, Track
+from src.environment.track import Obstacle, Track, load_track
 from src.graphics.renderer import Renderer
 
 
@@ -102,6 +103,51 @@ def run_track_editor(config: AppConfig, name: str = "track") -> None:
     renderer.quit()
 
 
+def run_obstacle_editor(config: AppConfig, track_path: str | Path) -> None:
+    """Edit obstacle positions in an existing track JSON file."""
+    config.ensure_output_dirs()
+    path = _resolve_track_path(config, track_path)
+    track = load_track(path)
+    renderer = Renderer(config, f"Edit Obstacles: {path.name}")
+    dirty = False
+    status = f"loaded {path.name}"
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_s and event.mod & pygame.KMOD_CTRL:
+                    track.save_to_path(path)
+                    dirty = False
+                    status = f"saved {path.name}"
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3):
+                previous_count = len(track.obstacles)
+                added = track.toggle_obstacle(event.pos, config.track.obstacle_radius)
+                current_count = len(track.obstacles)
+                if current_count != previous_count:
+                    dirty = True
+                    status = f"{'added' if added else 'removed'} obstacle, Ctrl+S to save"
+                else:
+                    status = "no change"
+
+        renderer.draw(
+            track,
+            lines=[
+                "Click: add/remove obstacle",
+                "Ctrl+S save  Esc quit",
+                f"obstacles {len(track.obstacles)}",
+                f"{'* ' if dirty else ''}{status}",
+            ],
+        )
+        renderer.tick()
+
+    renderer.quit()
+
+
 def _append_point(points: list[tuple[float, float]], point, min_distance: float) -> None:
     candidate = (float(point[0]), float(point[1]))
     if not points:
@@ -174,3 +220,17 @@ def _preview_track(
         start_line = start_line or auto_start
         finish_line = finish_line or auto_finish
     return Track(name, track_width, list(centerline), start_line, finish_line, list(obstacles))
+
+
+def _resolve_track_path(config: AppConfig, track_path: str | Path) -> Path:
+    path = Path(track_path)
+    if path.exists():
+        return path
+    candidate = config.tracks_dir / path
+    if candidate.exists():
+        return candidate
+    if path.suffix != ".json":
+        candidate = config.tracks_dir / f"{path}.json"
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"track JSON not found: {track_path}")

@@ -252,6 +252,12 @@ class Track:
         suffix = datetime.now().strftime("%Y%m%d_%H%M%S_%f") if timestamp else "track"
         filename = f"{self.name}_{suffix}.json".replace(" ", "_")
         path = directory / filename
+        self.save_to_path(path)
+        return path
+
+    def save_to_path(self, path: str | Path) -> Path:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as handle:
             json.dump(self.to_dict(), handle, indent=2)
         return path
