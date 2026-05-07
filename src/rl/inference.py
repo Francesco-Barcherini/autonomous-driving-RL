@@ -21,6 +21,7 @@ def run_inference(
     track_selector: str | None = None,
     som_path: str | Path | None = None,
     q_table_path: str | Path | None = None,
+    lidar_num_rays: int | None = None,
 ) -> None:
     """Run the trained policy in an interactive Pygame window."""
     config.ensure_output_dirs()
@@ -31,6 +32,17 @@ def run_inference(
     q_bundle = load_q_table(q_table_path, config)
     selected_som = som_path or (q_bundle.som_path if q_bundle.som_path else None)
     som = load_som_model(selected_som, config)
+    active_lidar_num_rays = lidar_num_rays or som.lidar_num_rays
+    if active_lidar_num_rays != som.lidar_num_rays:
+        raise ValueError(
+            f"SOM model expects {som.lidar_num_rays} lidar rays, "
+            f"but inference requested {active_lidar_num_rays}"
+        )
+    if q_bundle.lidar_num_rays is not None and q_bundle.lidar_num_rays != active_lidar_num_rays:
+        raise ValueError(
+            f"Q-table was trained with {q_bundle.lidar_num_rays} lidar rays, "
+            f"but inference is using {active_lidar_num_rays}"
+        )
     actions = q_bundle.actions
     max_steering = float(config.car.max_steering_diff_angle_deg)
     if actions.shape[0] != q_bundle.q_table.shape[1] or np.max(np.abs(actions[:, 1])) > max_steering:
@@ -39,7 +51,7 @@ def run_inference(
     renderer = Renderer(config, "Inference")
     rng = np.random.default_rng(config.simulation.random_seed)
     track = load_track(track_pairs[current_index][0])
-    env = DrivingEnv(config, track, rng)
+    env = DrivingEnv(config, track, rng, lidar_num_rays=active_lidar_num_rays)
     result = env.reset(random_start=False)
     running = True
 
@@ -137,5 +149,8 @@ def _event_digit(event: pygame.event.Event) -> int | None:
 
 
 def _lidar_display_lines(som, reading) -> list[str]:
-    d_c, d_rl = som.display_values_from_lidar(reading)
-    return [f"d_c {d_c:.3f}", f"d_rl {d_rl:.3f}"]
+    values = som.display_values_from_lidar(reading)
+    lines = [f"d_c {values[0]:.3f}", f"d_rl {values[1]:.3f}"]
+    if len(values) >= 3:
+        lines.append(f"d_rrll {values[2]:.3f}")
+    return lines

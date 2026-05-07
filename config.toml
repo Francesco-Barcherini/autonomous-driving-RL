@@ -36,8 +36,8 @@ max_distance = 150.0
 side_angle_deg = 45.0
 
 [som]
-dim_grid_neurons = 12
-factor_samples = 5.0
+dim_grid_neurons = 6
+factor_samples = 10.0
 learning_rate = 1.0
 random_seed = 42
 
@@ -118,5 +118,5 @@ epsilon_decay = 0.97
 beta = 0.0
 beta_increment = 0.01
 num_episodes = 1000
-max_steps_per_episode = 10000
+max_steps_per_episode = 4000
 checkpoint_episodes = 50

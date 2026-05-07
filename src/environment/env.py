@@ -18,7 +18,7 @@ TerminalReason = Literal["running", "success", "off_track", "collision", "timeou
 
 @dataclass
 class StepResult:
-    observation: tuple[float, float]
+    observation: tuple[float, ...]
     lidar: LidarReading
     done: bool
     success: bool
@@ -33,6 +33,7 @@ class DrivingEnv:
         config: AppConfig,
         track: Track,
         rng: np.random.Generator | None = None,
+        lidar_num_rays: int = 3,
     ) -> None:
         self.config = config
         self.track = track
@@ -44,7 +45,11 @@ class DrivingEnv:
             min_speed=config.car.min_speed,
             state=CarState(0.0, 0.0, 0.0, 0.0),
         )
-        self.lidar = Lidar(config.lidar.max_distance, config.lidar.side_angle_deg)
+        self.lidar = Lidar(
+            config.lidar.max_distance,
+            config.lidar.side_angle_deg,
+            lidar_num_rays,
+        )
         self.steps = 0
         self.done = False
         self.reason: TerminalReason = "running"
@@ -79,7 +84,7 @@ class DrivingEnv:
         self.last_lidar = self.lidar.scan(self.car.state, self.track)
         return StepResult(self.observation(), self.last_lidar, False, False, "running")
 
-    def observation(self) -> tuple[float, float]:
+    def observation(self) -> tuple[float, ...]:
         if self.last_lidar is None:
             self.last_lidar = self.lidar.scan(self.car.state, self.track)
         return self.last_lidar.vector

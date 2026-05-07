@@ -15,6 +15,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None, help="random seed override")
     parser.add_argument("--headless", action="store_true", help="disable Pygame debug window")
     parser.add_argument(
+        "--5lidar",
+        dest="five_lidar",
+        action="store_true",
+        help="train a SOM from five lidar rays instead of three",
+    )
+    parser.add_argument(
         "--qtable",
         nargs="?",
         const="",
@@ -31,6 +37,7 @@ def main() -> None:
         seed=args.seed,
         headless=args.headless,
         q_table_path=args.qtable,
+        lidar_num_rays=5 if args.five_lidar else 3,
     )
     print(f"saved SOM model: {path}")
 

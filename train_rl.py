@@ -18,6 +18,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None, help="random seed override")
     parser.add_argument("--headless", action="store_true", help="disable Pygame debug window")
     parser.add_argument("--fresh", action="store_true", help="start from an empty Q-table")
+    parser.add_argument(
+        "--5lidar",
+        dest="five_lidar",
+        action="store_true",
+        help="require a five-lidar SOM/Q-learning run",
+    )
     return parser
 
 
@@ -31,6 +37,7 @@ def main() -> None:
         seed=args.seed,
         headless=args.headless,
         resume=not args.fresh,
+        lidar_num_rays=5 if args.five_lidar else None,
     )
     print(f"saved Q-table: {path}")
 

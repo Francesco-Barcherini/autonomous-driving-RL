@@ -6,8 +6,10 @@ import unittest
 import numpy as np
 
 from src.config.settings import load_config
+from src.environment.env import StepResult
+from src.environment.lidar import LidarReading, RayHit
 from src.rl.actions import ActionSpace
-from src.rl.q_learning import QAgent, save_q_table, stable_softmax
+from src.rl.q_learning import QAgent, compute_reward, save_q_table, stable_softmax
 
 
 HAS_SHAPELY = importlib.util.find_spec("shapely") is not None
@@ -47,6 +49,35 @@ class QLearningTests(unittest.TestCase):
         np.testing.assert_array_equal(episodes, np.asarray([1, 2]))
         np.testing.assert_array_equal(tracks, np.asarray(["track_a.json", "track_b.json"]))
         np.testing.assert_allclose(rewards, np.asarray([3.5, -1.0]))
+
+    def test_reward_treats_middle_lidar_difference_as_unsafe(self) -> None:
+        config = load_config("config.toml")
+        config.rl.reward_step = 0.0
+        config.rl.reward_safe = 1.0
+        config.rl.reward_unsafe = -2.0
+        config.rl.dc_threshold_safe = 0.5
+        config.rl.drl_threshold_safe = 0.3
+        config.rl.dc_threshold_unsafe = 0.2
+        config.rl.drl_threshold_unsafe = 0.5
+        reading = LidarReading(
+            center=_ray(config.lidar.max_distance),
+            left=_ray(config.lidar.max_distance),
+            right=_ray(config.lidar.max_distance),
+            middle_left=_ray(config.lidar.max_distance),
+            middle_right=_ray(0.0),
+        )
+        result = StepResult(reading.vector, reading, False, False, "running")
+
+        self.assertEqual(compute_reward(config, result), config.rl.reward_unsafe)
+
+def _ray(distance: float) -> RayHit:
+    return RayHit(
+        angle=0.0,
+        distance=distance,
+        start=(0.0, 0.0),
+        end=(distance, 0.0),
+        hit=(distance, 0.0),
+    )
 
 
 if __name__ == "__main__":

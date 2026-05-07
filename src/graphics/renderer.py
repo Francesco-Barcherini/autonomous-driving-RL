@@ -204,9 +204,10 @@ class Renderer:
 
         points = np.empty((0, 2), dtype=float)
         if feature_points is not None:
-            points = np.asarray(feature_points, dtype=float).reshape(-1, 2)
-        weight_points = np.asarray(weights, dtype=float).reshape(-1, 2)
-        if weight_points.size == 0:
+            points = _project_feature_points(np.asarray(feature_points, dtype=float))
+        raw_weight_points = np.asarray(weights, dtype=float).reshape(-1, weights.shape[-1])
+        weight_points = _project_feature_points(raw_weight_points)
+        if raw_weight_points.size == 0:
             return
 
         all_points = weight_points if points.size == 0 else np.vstack([points, weight_points])
@@ -236,8 +237,10 @@ class Renderer:
             else:
                 pygame.draw.rect(self.screen, (245, 207, 82), pygame.Rect(px - 3, py - 3, 6, 6))
         if active_state is not None:
-            d_c, d_rl = weight_points[active_state]
-            self._text(f"d_c_som: {d_c:.2f} d_rl_som: {d_rl:.2f}", x, y + height + 8)
+            labels = ("c", "rl", "rrll")
+            values = raw_weight_points[active_state]
+            text = " ".join(f"{label}: {value:.2f}" for label, value in zip(labels, values))
+            self._text(text, x, y + height + 8)
 
     def _text(self, text: str, x: int, y: int) -> None:
         surface = self.font.render(text, True, (226, 231, 236))
@@ -263,3 +266,12 @@ def _map_feature_point(
     x = rect.left + 8 + int(x_norm * max(rect.width - 16, 1))
     y = rect.bottom - 8 - int(y_norm * max(rect.height - 16, 1))
     return (x, y)
+
+
+def _project_feature_points(points: np.ndarray) -> np.ndarray:
+    points = points.reshape(-1, points.shape[-1])
+    if points.shape[1] >= 2:
+        return points[:, :2]
+    result = np.zeros((points.shape[0], 2), dtype=float)
+    result[:, 0] = points[:, 0]
+    return result

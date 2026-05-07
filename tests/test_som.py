@@ -22,6 +22,20 @@ class SomTests(unittest.TestCase):
         self.assertGreaterEqual(state, 0)
         self.assertLess(state, model.num_states)
 
+    def test_five_lidar_normalization_uses_three_features(self) -> None:
+        config = load_config("config.toml")
+        weights = np.ones((config.som.dim_grid_neurons, config.som.dim_grid_neurons, 3))
+        model = discretizer_from_config(config, weights)
+        vector = model.normalize_features(
+            (
+                config.lidar.max_distance,
+                config.lidar.max_distance,
+                -config.lidar.max_distance,
+            )
+        )
+        np.testing.assert_allclose(vector, np.asarray([1.0, 0.5, -0.5]))
+        self.assertEqual(model.lidar_num_rays, 5)
+
 
 if __name__ == "__main__":
     unittest.main()

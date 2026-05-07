@@ -23,6 +23,7 @@ class QTableBundle:
     source_path: Path
     som_path: str
     episode: int
+    lidar_num_rays: int | None = None
 
 
 @dataclass
@@ -117,10 +118,15 @@ def compute_reward(
     if stuck_penalty:
         reward += config.rl.reward_stuck
 
-    dc_ratio, drl_ratio = safety_ratios(config, result.lidar)
-    if dc_ratio > config.rl.dc_threshold_safe and drl_ratio < config.rl.drl_threshold_safe:
+    dc_ratio, drl_ratio, drrll_ratio = safety_ratios(config, result.lidar)
+    diff_ratios = (drl_ratio, drrll_ratio)
+    if dc_ratio > config.rl.dc_threshold_safe and all(
+        ratio < config.rl.drl_threshold_safe for ratio in diff_ratios
+    ):
         reward += config.rl.reward_safe
-    if dc_ratio < config.rl.dc_threshold_unsafe or drl_ratio > config.rl.drl_threshold_unsafe:
+    if dc_ratio < config.rl.dc_threshold_unsafe or any(
+        ratio > config.rl.drl_threshold_unsafe for ratio in diff_ratios
+    ):
         reward += config.rl.reward_unsafe
 
     # if action is not None:
@@ -163,10 +169,13 @@ def nearest_centerline_index(track: Track, position: tuple[float, float]) -> int
     return int(np.argmin(distances))
 
 
-def safety_ratios(config: AppConfig, reading: LidarReading) -> tuple[float, float]:
-    dc_ratio = reading.center.distance / max(config.lidar.max_distance, 1e-12)
-    drl_ratio = abs(reading.right.distance - reading.left.distance) / max(config.lidar.max_distance, 1e-12)
-    return float(dc_ratio), float(drl_ratio)
+def safety_ratios(config: AppConfig, reading: LidarReading) -> tuple[float, float, float]:
+    max_distance = max(config.lidar.max_distance, 1e-12)
+    features = np.asarray(reading.vector, dtype=float)
+    dc_ratio = features[0] / max_distance
+    drl_ratio = abs(features[1]) / max_distance if len(features) > 1 else 0.0
+    drrll_ratio = abs(features[2]) / max_distance if len(features) > 2 else 0.0
+    return float(dc_ratio), float(drl_ratio), float(drrll_ratio)
 
 
 def save_q_table(
@@ -178,6 +187,7 @@ def save_q_table(
     episode: int,
     checkpoint: bool = False,
     checkpoint_rewards: list[tuple[int, str, float]] | None = None,
+    lidar_num_rays: int | None = None,
 ) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -192,6 +202,7 @@ def save_q_table(
         beta=np.asarray(agent.beta),
         episode=np.asarray(episode),
         som_path=np.asarray(str(som_path or "")),
+        lidar_num_rays=np.asarray(lidar_num_rays or -1),
         config=np.asarray(json.dumps(config.to_plain_dict(), default=str)),
         checkpoint_reward_episodes=np.asarray([row[0] for row in reward_rows], dtype=int),
         checkpoint_reward_tracks=np.asarray([row[1] for row in reward_rows], dtype=str),
@@ -211,4 +222,12 @@ def load_q_table(path: str | Path | None, config: AppConfig) -> QTableBundle:
         source_path=table_path,
         som_path=str(data["som_path"]),
         episode=int(data["episode"]),
+        lidar_num_rays=_load_lidar_num_rays(data),
     )
+
+
+def _load_lidar_num_rays(data: np.lib.npyio.NpzFile) -> int | None:
+    if "lidar_num_rays" not in data.files:
+        return None
+    value = int(data["lidar_num_rays"])
+    return value if value > 0 else None

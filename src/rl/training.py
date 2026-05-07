@@ -29,9 +29,16 @@ def train_q_learning(
     seed: int | None = None,
     headless: bool = False,
     resume: bool = True,
+    lidar_num_rays: int | None = None,
 ) -> Path:
     config.ensure_output_dirs()
     som = load_som_model(som_path, config)
+    active_lidar_num_rays = lidar_num_rays or som.lidar_num_rays
+    if active_lidar_num_rays != som.lidar_num_rays:
+        raise ValueError(
+            f"SOM model expects {som.lidar_num_rays} lidar rays, "
+            f"but training requested {active_lidar_num_rays}"
+        )
     track_pairs = load_tracks(config.tracks_dir)
     if not track_pairs:
         raise FileNotFoundError("no tracks found in out/tracks; run draw_tracks.py first")
@@ -45,6 +52,7 @@ def train_q_learning(
         len(actions),
         q_table_path,
         resume,
+        active_lidar_num_rays,
     )
     episode_count = episodes if episodes is not None else config.rl.num_episodes
     target_episode = start_episode + episode_count
@@ -68,7 +76,7 @@ def train_q_learning(
         track_index = episode % len(tracks)
         track = tracks[track_index]
         track_name = track_pairs[track_index][0].name
-        env = DrivingEnv(config, track, rng)
+        env = DrivingEnv(config, track, rng, lidar_num_rays=active_lidar_num_rays)
         result = env.reset()
         state = som.state_from_lidar(result.lidar)
 
@@ -143,6 +151,7 @@ def train_q_learning(
                 global_episode,
                 checkpoint=True,
                 checkpoint_rewards=checkpoint_rewards,
+                lidar_num_rays=active_lidar_num_rays,
             )
             checkpoint_rewards = []
 
@@ -158,6 +167,7 @@ def train_q_learning(
         target_episode,
         checkpoint=False,
         checkpoint_rewards=checkpoint_rewards,
+        lidar_num_rays=active_lidar_num_rays,
     ) or last_path
 
 
@@ -227,8 +237,11 @@ def _lidar_display_lines(
 ) -> list[str]:
     if reading is None:
         return []
-    d_c, d_rl = som.display_values_from_lidar(reading)
-    return [f"d_c {d_c:.3f}", f"d_rl {d_rl:.3f}"]
+    values = som.display_values_from_lidar(reading)
+    lines = [f"d_c {values[0]:.3f}", f"d_rl {values[1]:.3f}"]
+    if len(values) >= 3:
+        lines.append(f"d_rrll {values[2]:.3f}")
+    return lines
 
 
 def _load_or_create_agent(
@@ -237,6 +250,7 @@ def _load_or_create_agent(
     num_actions: int,
     q_table_path: str | Path | None,
     resume: bool,
+    lidar_num_rays: int,
 ) -> tuple[QAgent, int]:
     if not resume and q_table_path is None:
         print("starting Q-learning from a fresh Q-table")
@@ -255,6 +269,12 @@ def _load_or_create_agent(
         print(
             "ignored resume Q-table with shape "
             f"{bundle.q_table.shape}; expected {expected_shape}"
+        )
+        return QAgent.fresh(num_states, num_actions, config), 0
+    if bundle.lidar_num_rays is not None and bundle.lidar_num_rays != lidar_num_rays:
+        print(
+            "ignored resume Q-table with "
+            f"{bundle.lidar_num_rays} lidar rays; expected {lidar_num_rays}"
         )
         return QAgent.fresh(num_states, num_actions, config), 0
 

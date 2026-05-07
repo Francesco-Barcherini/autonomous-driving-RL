@@ -118,6 +118,21 @@ class EnvironmentTests(unittest.TestCase):
         reading = Lidar(max_distance=250.0).scan(CarState(260.0, 0.0, 0.0), track)
         self.assertAlmostEqual(reading.center.distance, 250.0)
 
+    def test_five_lidar_returns_middle_rays_and_three_features(self) -> None:
+        track = Track(
+            "five_lidar",
+            100.0,
+            [(0.0, 0.0), (300.0, 0.0)],
+            [(0.0, -50.0), (0.0, 50.0)],
+            [(300.0, -50.0), (300.0, 50.0)],
+            [],
+        )
+        reading = Lidar(max_distance=250.0, num_rays=5).scan(CarState(100.0, 0.0, 0.0), track)
+        self.assertEqual(len(reading.rays), 5)
+        self.assertIsNotNone(reading.middle_left)
+        self.assertIsNotNone(reading.middle_right)
+        self.assertEqual(len(reading.vector), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-"""Three-ray lidar simulation."""
+"""Configurable three- or five-ray lidar simulation."""
 
 from __future__ import annotations
 
@@ -9,6 +9,18 @@ from shapely.geometry import LineString, Point
 
 from src.environment.car import CarState
 from src.environment.track import Track
+
+
+def input_len_from_lidar_num_rays(num_rays: int) -> int:
+    if num_rays == 5:
+        return 3
+    if num_rays == 3:
+        return 2
+    raise ValueError("Lidar num_rays must be either 3 or 5")
+
+
+def lidar_num_rays_from_input_len(input_len: int) -> int:
+    return 5 if input_len >= 3 else 3
 
 
 @dataclass
@@ -25,27 +37,48 @@ class LidarReading:
     center: RayHit
     left: RayHit
     right: RayHit
+    middle_left: RayHit | None = None
+    middle_right: RayHit | None = None
 
     @property
-    def vector(self) -> tuple[float, float]:
-        return (self.center.distance, self.right.distance - self.left.distance)
+    def vector(self) -> tuple[float, ...]:
+        vector = [self.center.distance, self.right.distance - self.left.distance]
+        if self.middle_left is not None and self.middle_right is not None:
+            vector.append(self.middle_right.distance - self.middle_left.distance)
+        return tuple(vector)
 
     @property
     def rays(self) -> list[RayHit]:
+        if self.middle_left is not None and self.middle_right is not None:
+            return [self.left, self.middle_left, self.center, self.middle_right, self.right]
         return [self.left, self.center, self.right]
 
 
 @dataclass
 class Lidar:
-    """A front ray and two side rays at a fixed angle."""
+    """A front ray, plus two or four side rays at fixed angles."""
 
     max_distance: float
     side_angle_deg: float = 45.0
+    num_rays: int = 3
+
+    def __post_init__(self) -> None:
+        input_len_from_lidar_num_rays(self.num_rays)
 
     def scan(self, state: CarState, track: Track) -> LidarReading:
         left = self._cast(state, track, math.radians(self.side_angle_deg))
         center = self._cast(state, track, 0.0)
         right = self._cast(state, track, -math.radians(self.side_angle_deg))
+        if self.num_rays == 5:
+            middle_left = self._cast(state, track, math.radians(self.side_angle_deg / 2.0))
+            middle_right = self._cast(state, track, -math.radians(self.side_angle_deg / 2.0))
+            return LidarReading(
+                center=center,
+                left=left,
+                right=right,
+                middle_left=middle_left,
+                middle_right=middle_right,
+            )
         return LidarReading(center=center, left=left, right=right)
 
     def _cast(self, state: CarState, track: Track, offset: float) -> RayHit:
