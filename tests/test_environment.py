@@ -118,6 +118,31 @@ class EnvironmentTests(unittest.TestCase):
         reading = Lidar(max_distance=250.0).scan(CarState(260.0, 0.0, 0.0), track)
         self.assertAlmostEqual(reading.center.distance, 250.0)
 
+    def test_lidar_ignores_hits_beyond_finish_line(self) -> None:
+        track = Track(
+            "finish_cutoff",
+            100.0,
+            [(0.0, 0.0), (500.0, 0.0)],
+            [(0.0, -50.0), (0.0, 50.0)],
+            [(300.0, -50.0), (300.0, 50.0)],
+            [Obstacle(350.0, 0.0, 10.0)],
+        )
+        reading = Lidar(max_distance=300.0).scan(CarState(260.0, 0.0, 0.0), track)
+        self.assertAlmostEqual(reading.center.distance, 300.0)
+
+    def test_lidar_keeps_hits_before_finish_line(self) -> None:
+        track = Track(
+            "finish_cutoff_before",
+            100.0,
+            [(0.0, 0.0), (500.0, 0.0)],
+            [(0.0, -50.0), (0.0, 50.0)],
+            [(300.0, -50.0), (300.0, 50.0)],
+            [Obstacle(280.0, 0.0, 5.0)],
+        )
+        reading = Lidar(max_distance=300.0).scan(CarState(260.0, 0.0, 0.0), track)
+        self.assertGreater(reading.center.distance, 14.0)
+        self.assertLess(reading.center.distance, 16.0)
+
     def test_five_lidar_returns_middle_rays_and_three_features(self) -> None:
         track = Track(
             "five_lidar",

@@ -96,6 +96,7 @@ class Lidar:
         geometries.extend(obstacle.geometry().boundary for obstacle in track.obstacles)
 
         origin = Point(start)
+        finish_distance = _nearest_intersection_distance(ray, track.finish_geometry, origin)
         for geometry in geometries:
             intersection = ray.intersection(geometry)
             if intersection.is_empty:
@@ -104,6 +105,8 @@ class Lidar:
                 if candidate.distance(track.finish_geometry) <= 1e-6:
                     continue
                 distance = origin.distance(candidate)
+                if finish_distance is not None and distance >= finish_distance - 1e-7:
+                    continue
                 if 1e-7 <= distance < nearest_distance:
                     nearest_distance = float(distance)
                     nearest_hit = (float(candidate.x), float(candidate.y))
@@ -116,6 +119,22 @@ class Lidar:
             end=full_end,
             hit=hit,
         )
+
+
+def _nearest_intersection_distance(
+    ray: LineString,
+    geometry: LineString,
+    origin: Point,
+) -> float | None:
+    intersection = ray.intersection(geometry)
+    if intersection.is_empty:
+        return None
+    distances = [
+        origin.distance(candidate)
+        for candidate in _candidate_points(intersection)
+        if origin.distance(candidate) >= 1e-7
+    ]
+    return float(min(distances)) if distances else None
 
 
 def _candidate_points(geometry) -> list[Point]:
