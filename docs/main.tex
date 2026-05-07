@@ -1,0 +1,211 @@
+% Tipo di documento. L'uso di twoside implica che i capitoli inizino sempre con la prima pagina a sinistra, eventualmente lasciando una pagina vuota nel capitolo precedente. Se questa cosa è fastidiosa, è possibile rimuoverlo. 
+\documentclass[a4paper,openright]{report}
+
+% Dimensione dei margini
+\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry} 
+% Dimensione del font
+\usepackage[fontsize=12pt]{scrextend}
+% Lingua del testo
+\usepackage[english]{babel}
+% Lingua per la bibliografia
+% \usepackage[fixlanguage]{babelbib}
+% Codifica del testo
+\usepackage[utf8]{inputenc} 
+% Font mono (quello di default non supporta il grassetto)
+\usepackage{courier}
+% Encoding del testo
+\usepackage[T1]{fontenc}
+% Lorem Ipsum
+\usepackage{lipsum}
+% Bibliografia
+\usepackage[
+backend=biber,
+bibstyle=other/custom-numeric,
+citestyle=numeric,
+sorting=none,
+]{biblatex}
+% Sorgente della bibliografia
+\addbibresource{chapters/Bibliography.bib}
+% Per ruotare le immagini
+\usepackage{rotating}
+% Per cambiare i capitoli
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]
+  {\normalfont\bfseries\huge}{\thechapter}{1em}{\huge}
+% Per mostrare nell'indice anche le subsubsection
+\setcounter{tocdepth}{3}
+% Per modificare l'header delle pagine 
+\usepackage{fancyhdr}
+% Librerie matematiche
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{amsthm}         
+% Uso delle immagini
+\usepackage{graphicx}
+% Uso dei colori
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+% Uso dei listing per il codice
+\usepackage{listings}          
+% Per inserire gli hyperlinks tra i vari elementi del testo 
+% \usepackage[hang, flushmargin]{footmisc}
+% Diversi tipi di sottolineature
+\usepackage[normalem]{ulem}
+% Fix relative indenting
+\usepackage{lstautogobble}
+% Code coloring
+\usepackage{color}
+% Nice font
+\usepackage{zi4}
+% Loads the Latin Modern font
+\usepackage{lmodern}
+% For text alignment
+\usepackage{ragged2e}
+% Customizes the appearance of figure and table captions
+\usepackage{caption}
+% Code highlighting
+\usepackage[newfloat,outputdir=out]{minted}
+% Better frame for minted
+\usepackage{tcolorbox}
+\tcbuselibrary{minted,skins,breakable,xparse}
+\tcbuselibrary{listingsutf8} % Allows minted in tcolorbox
+% Additional options to control the placement of figures and tables
+\usepackage{float}
+% No paragraph indentation instead vspaces
+\usepackage[skip=5pt]{parskip}
+% Allows customization of line spacing
+\usepackage{setspace}
+% Enables switching or substituting hyphenation patterns in your document
+\usepackage{hyphsubst}
+% Improves the overall typography of the document by subtly adjusting spacing and font shapes
+\usepackage{microtype}
+% Allows the creation of hyperlinks in the document
+\usepackage{hyperref}
+% Adds back-references from footnotes to the point in the text where the footnote was used
+\usepackage{footnotebackref}
+% Tools for formatting and managing quotes in your document
+% To be used after minted
+\usepackage{csquotes}
+% Adding sub-captions to figures and tables
+\usepackage{subcaption}
+% Drawing electrical and electronic circuit diagrams
+\usepackage{circuitikz}
+% Permits to patch macros
+\usepackage{xpatch}
+
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{siunitx} % For proper unit formatting
+\usepackage{cleveref} % For proper unit formatting
+
+
+% Comments ( substitute command name and name )
+\newcommand{\cuno}[1]{\textcolor{red}{[\bfseries Persona 1: #1]}}
+\newcommand{\cdue}[1]{\textcolor{red}{[\bfseries Persona 2: #1]}}
+
+% Don't include in \leftmark "Chapter"
+\renewcommand{\chaptermark}[1]{%
+  \markboth{\thechapter. #1}{}%
+}
+% Modifica lo stile dell'header
+\pagestyle{fancy}
+\fancyhf{}
+% These work if the document is in twoside mode
+% \fancyhead[CE,CO]{\rightmark}
+% \fancyhead[LE,RO]{\textbf{\thepage}}
+
+% Make the header
+% on the left side, show the chapter title if no section is present, otherwise the section title
+% on the right side, show the page number
+\fancyhead[L]{
+  \ifnum\value{section}=0 % Check if no section exists
+    \leftmark            % Use Chapter title
+  \else
+    \rightmark           % Use Section title
+  \fi
+}
+\fancyhead[R]{\textbf{\thepage}}
+\fancyfoot{}
+\setlength{\headheight}{17pt}
+
+% Rimuove il numero di pagina all'inizio dei capitoli
+\fancypagestyle{plain}{
+  \fancyfoot{}
+  \fancyhead{}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% Custom colors
+\definecolor{DarkGreen}{RGB}{20,80,40}
+\definecolor{Unipi}{RGB}{00,85,143} 
+\definecolor{term_bg_color}{RGB}{240,241,240} 
+
+% Modifica dello stile dei riferimenti
+\hypersetup{
+    colorlinks,
+    linkcolor=Unipi,
+    citecolor=Unipi,
+    urlcolor=Unipi
+}
+
+% Interlinea
+\setstretch{1.1}
+
+% Supercite tipo wikipedia
+\DeclareCiteCommand{\supercite}[\mkbibsuperscript]
+  {\iffieldundef{prenote}
+     {}
+     {\BibliographyWarning{Ignoring prenote argument}}%
+   \iffieldundef{postnote}
+     {}
+     {\BibliographyWarning{Ignoring postnote argument}}}
+  {\usebibmacro{citeindex}%
+   \bibopenbracket\usebibmacro{cite}\bibclosebracket}
+  {\supercitedelim}
+  {}
+
+
+% Aggiunti definizioni, teoremi, linea e listing
+\newtheorem{definition}{Definizione}[section]
+\newtheorem{theorem}{Teorema}[section]
+\providecommand*\definitionautorefname{Definizione}
+\providecommand*\theoremautorefname{Teorema}
+\providecommand*{\listingautorefname}{Listing}
+\providecommand*\lstnumberautorefname{Linea}
+
+\newcommand{\cboh}[1]{{\textcolor{blue}[\textcolor{magenta}{\bf{!!: }}{ \textcolor{blue}{#1]}}}}
+
+% LaTeX stops trying to balance the text across pages, allowing pages to have uneven bottom margins
+\raggedbottom
+
+%----------------------------------------------------
+
+\begin{document}
+
+\setlength{\fboxsep}{0pt}
+\selectlanguage{english}
+
+% \hyphenpenalty=10000
+% \exhyphenpenalty=10000
+
+% \loadspellchecklist[it][wordlist.txt]
+% \setupspellchecking[state=start]
+
+\include{listings/settings}
+\include{chapters/0_Frontespizio}
+\tableofcontents
+
+
+% \include{chapters/XX_Photos}
+%\include{chapters/1_Introduction}
+% \include{chapters/2_Implementation}
+% \include{chapters/3_Verification}
+% \include{chapters/4_Analysis}
+%\include{chapters/99_Conclusions}
+% Cite sources that are not cited in the text
+% \nocite{*}
+%\printbibliography
+
+\end{document}
+
+%----------------------------------------------------
