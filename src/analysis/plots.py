@@ -210,7 +210,7 @@ def plot_time_ratio_histograms(
 
 
 def weighted_time(row: dict[str, str]) -> float:
-    return _float(row.get("time", "")) * _float(row.get("distance_percentage", ""))
+    return _float(row.get("time", "")) / _float(row.get("distance_percentage", ""))
 
 
 def plot_metric_histograms_by_model(
