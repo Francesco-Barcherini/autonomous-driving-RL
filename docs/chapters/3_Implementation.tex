@@ -1,0 +1,85 @@
+\section{Implementation Details}
+\label{ch:implementation}
+
+\subsection{Software Structure}
+
+The project was implemented in Python. Numerical operations are based on NumPy, geometry and collision checks on Shapely, interactive rendering on Pygame, SOM training on MiniSom, and analysis plots on Matplotlib.
+
+The main entry points cover the complete workflow:
+\begin{itemize}
+    \item \texttt{draw\_tracks.py} creates tracks and edits obstacle layouts;
+    \item \texttt{train\_som.py} trains the Kohonen map from sampled or policy-generated lidar data;
+    \item \texttt{train\_rl.py} trains and checkpoints the Q-learning controller;
+    \item \texttt{run\_inference.py} executes a trained policy visually;
+    \item \texttt{evaluate\_models.py} and \texttt{plot\_analysis.py} compute metrics and generate plots.
+\end{itemize}
+Configuration values are collected in \texttt{config.toml}; tracks are stored as JSON files, models as NumPy \texttt{.npz} checkpoints, and analysis outputs as CSV files and PNG figures.
+
+\subsection{Simulation Environment}
+
+The road geometry is generated from the centerline using a Shapely line buffer. Obstacles are circular polygons. The car rectangle is rotated according to the current heading, and its polygon is used for all collision checks. An episode terminates when the car intersects the finish line, leaves the road, hits an obstacle, or reaches the maximum number of steps.
+
+The car dynamics are intentionally simple. At each step,
+\[
+    v_{t+1} = \mathrm{clip}(v_t + a_t \Delta t),
+\]
+\[
+    \theta_{t+1} = \theta_t + \Delta \theta_t,
+\]
+\[
+    x_{t+1} = x_t + v_{t+1}\cos(\theta_{t+1})\Delta t, \qquad
+    y_{t+1} = y_t + v_{t+1}\sin(\theta_{t+1})\Delta t .
+\]
+where acceleration updates velocity, steering directly changes heading, and the car advances along the new direction.
+
+The lidar system casts rays from the car center and computes the nearest valid intersection with road borders or obstacles. The finish line is treated as a target rather than as an obstacle, so intersections beyond it are ignored.
+
+\subsection{Kohonen Self-Organizing Map}
+
+The SOM is used to convert continuous lidar measurements into a discrete state suitable for a tabular controller. In the three-lidar setting, the feature vector is
+\[
+    \phi_3 = (d_c, d_r - d_l),
+\]
+where $d_c$ is the central distance and $d_l$, $d_r$ are the left and right distances. In the five-lidar setting, the feature vector is extended to
+\[
+    \phi_5 = (d_c, d_r - d_l, d_{mr} - d_{ml}),
+\]
+where $d_{ml}$ and $d_{mr}$ are the middle-left and middle-right distances.
+
+The final normalization is component-wise:
+\[
+    \hat d_c = \frac{\mathrm{clip}(d_c,0,d_{\max})}{d_{\max}},
+\]
+and
+\[
+    \widehat{\Delta d} =
+    \frac{\mathrm{clip}(\Delta d,-d_{\max},d_{\max})}{2d_{\max}} .
+\]
+This preserves the distinction between close and far obstacles without normalizing the whole vector by its Euclidean norm.
+
+The SOM was trained with Euclidean BMU selection. The main experiments considered $6 \times 6$ and $12 \times 12$ grids, corresponding to 36 and 144 discrete states. Training samples can be generated randomly from valid track positions, or collected by running an existing Q-table policy and recording simulated lidar measurements.
+
+\subsection{Q-Learning Controller}
+
+For each SOM state and each action, the Q-table stores an estimate of the expected discounted return. The update rule is
+\[
+    Q(s_t,a_t) \leftarrow Q(s_t,a_t) +
+    \alpha \left[
+    r_t + \gamma \max_a Q(s_{t+1},a) - Q(s_t,a_t)
+    \right],
+\]
+with the terminal case obtained by removing the future-value term. The values of $\alpha$, $\gamma$, $\epsilon$, $\beta$ and the reward parameters are read from the configuration file.
+
+Action selection combines random exploration and Boltzmann selection. Initially, $\epsilon$-greedy exploration visits diverse state-action pairs. As training progresses, $\epsilon$ decays and the Boltzmann parameter $\beta$ increases, making the policy more dependent on learned Q-values.
+
+The reward function includes:
+\begin{itemize}
+    \item a positive terminal reward for reaching the finish line;
+    \item a negative terminal reward for collisions or off-track termination;
+    \item a small step penalty to encourage shorter trajectories;
+    \item safe and unsafe shaping terms based on lidar thresholds;
+    \item progress and regress rewards computed from movement along the centerline;
+    \item a stuck penalty when the car does not progress for a configured number of iterations.
+\end{itemize}
+
+Because the sparse success reward was difficult to learn directly, curriculum learning was adopted: training moved from simple tracks to complex tracks without obstacles, then to easy obstacles and finally to hard obstacle layouts. Checkpoints store the Q-table, action metadata, linked SOM path, lidar configuration and recent episode rewards.

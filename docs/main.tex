@@ -1,8 +1,8 @@
 % Tipo di documento. L'uso di twoside implica che i capitoli inizino sempre con la prima pagina a sinistra, eventualmente lasciando una pagina vuota nel capitolo precedente. Se questa cosa è fastidiosa, è possibile rimuoverlo. 
-\documentclass[a4paper,openright]{report}
+\documentclass[a4paper]{article}
 
 % Dimensione dei margini
-\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry} 
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry} 
 % Dimensione del font
 \usepackage[fontsize=12pt]{scrextend}
 % Lingua del testo
@@ -20,7 +20,7 @@
 % Bibliografia
 \usepackage[
 backend=biber,
-bibstyle=other/custom-numeric,
+% bibstyle=other/custom-numeric,
 citestyle=numeric,
 sorting=none,
 ]{biblatex}
@@ -103,10 +103,10 @@ sorting=none,
 \newcommand{\cuno}[1]{\textcolor{red}{[\bfseries Persona 1: #1]}}
 \newcommand{\cdue}[1]{\textcolor{red}{[\bfseries Persona 2: #1]}}
 
-% Don't include in \leftmark "Chapter"
-\renewcommand{\chaptermark}[1]{%
-  \markboth{\thechapter. #1}{}%
-}
+% % Don't include in \leftmark "Chapter"
+% \renewcommand{\chaptermark}[1]{%
+%   \markboth{\thechapter. #1}{}%
+% }
 % Modifica lo stile dell'header
 \pagestyle{fancy}
 \fancyhf{}
@@ -191,20 +191,25 @@ sorting=none,
 % \loadspellchecklist[it][wordlist.txt]
 % \setupspellchecking[state=start]
 
-\include{listings/settings}
+% \include{listings/settings}
 \include{chapters/0_Frontespizio}
 \tableofcontents
+\thispagestyle{empty}
+\newpage
+\pagenumbering{arabic}
 
+\include{chapters/1_Introduction}
+\include{chapters/2_Overview}
+\include{chapters/3_Implementation}
+\include{chapters/4_Evaluation}
+\include{chapters/99_Conclusions}
 
-% \include{chapters/XX_Photos}
-%\include{chapters/1_Introduction}
-% \include{chapters/2_Implementation}
-% \include{chapters/3_Verification}
-% \include{chapters/4_Analysis}
-%\include{chapters/99_Conclusions}
 % Cite sources that are not cited in the text
 % \nocite{*}
 %\printbibliography
+
+\listoffigures
+\listoftables
 
 \end{document}
 

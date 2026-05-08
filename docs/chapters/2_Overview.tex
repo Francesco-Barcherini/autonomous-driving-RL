@@ -1,0 +1,36 @@
+\section{System Overview and Specifications}
+\label{ch:overview}
+
+\subsection{Architecture}
+
+The system is organized as a closed-loop learning and control pipeline. The environment provides the current car state and lidar distances. The lidar vector is transformed into a compact feature vector, normalized and mapped by the SOM to the best matching unit (BMU). This BMU is the discrete state of the Q-table. The policy selects one action from a finite action set, and the simulator applies it to update the vehicle dynamics.
+
+\begin{figure}[H]
+    \centering
+    \fbox{\begin{minipage}[c][0.12\textheight][c]{0.88\textwidth}
+        \centering
+        Lidar $\rightarrow$ features $\rightarrow$ SOM/BMU $\rightarrow$ Q-table $\rightarrow$ action $\rightarrow$ simulator/reward.
+    \end{minipage}}
+    \caption{Block diagram of the implemented perception-control loop.}
+    \label{fig:architecture-placeholder}
+\end{figure}
+
+The public scripts correspond to the main phases of the workflow. The track editor creates and modifies JSON tracks. The SOM training script learns the state discretizer from sampled or policy-generated lidar data. The reinforcement learning script trains and checkpoints Q-tables. The inference script loads trained models and runs the policy visually. The evaluation scripts compute metrics for trained models and produce plots.
+
+\subsection{Environment Specification}
+
+Each track is a non-loop circuit described by a centerline, a road width, a start line, a finish line and circular obstacles. The drivable road is obtained by buffering the centerline by half the track width, which supports irregular tracks while preserving simple collision geometry.
+
+The car is represented by a rectangular rigid body. Its state is
+\[
+    s_{car} = (x, y, \theta, v),
+\]
+where $(x,y)$ is the center position, $\theta$ is the heading angle and $v$ is the scalar longitudinal velocity. The default initial pose is the first centerline position for which the full car rectangle lies inside the road, with heading aligned to the local track direction. This prevents the episode from starting in an invalid off-track state.
+
+The final model uses five lidar rays distributed from $-\alpha$ to $+\alpha$, where $\alpha$ is the configured side angle. Earlier experiments also used a three-lidar version with only left, center and right rays.
+
+\subsection{Control Specification}
+
+The action space contains 27 actions, defined as the Cartesian product of three acceleration values and nine steering-delta values. The acceleration values are full braking, no acceleration and full acceleration. The steering component is a direct heading increment rather than an angular acceleration; this choice was introduced because direct steering was more reactive in the discrete controller.
+
+The controller must reach the finish line, avoid borders and obstacles, and complete the circuit with a short and stable trajectory. This balance is enforced through reward shaping during training and through several evaluation metrics after training.

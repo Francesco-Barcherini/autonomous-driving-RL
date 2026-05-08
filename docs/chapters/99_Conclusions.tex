@@ -1,0 +1,24 @@
+\section{Conclusions and Future Work}
+\label{ch:conclusions}
+
+This project developed a complete two-dimensional self-driving car demonstration based on a Kohonen self-organizing map and tabular Q-learning. The implemented system includes an interactive track editor, a geometric simulator, lidar-based perception, SOM state discretization, reinforcement learning training, live inference and a reproducible evaluation pipeline.
+
+The proposed architecture shows that a compact neural discretizer can be effectively combined with a tabular reinforcement learning controller in a simplified autonomous driving task. The SOM reduces continuous lidar readings to a finite number of states, making Q-learning feasible and interpretable. The curriculum learning procedure and reward shaping terms were necessary to guide the agent toward successful behavior, especially because reaching the finish line is a sparse event.
+
+The experiments explored multiple configurations. The most relevant design factors were the number of lidar rays, the steering range and the size of the SOM grid. Richer perception, especially with five lidar rays, provides additional information about obstacles in front of the vehicle and about the symmetry of free space around the car. Larger SOM grids provide more representational capacity, although they also increase the number of state-action pairs that must be learned.
+
+Several limitations remain. Central obstacles are particularly difficult because the immediate lidar state may indicate danger without specifying a unique best side for avoidance. The discrete steering policy can also produce oscillations, especially when the car alternates between similar SOM states. Very sharp curves, long tracks and dense obstacle layouts remain challenging for a purely tabular controller.
+
+Future work could extend the project in several directions:
+\begin{itemize}
+    \item use SARSA($\lambda$) or Q($\lambda$) to propagate reward information more effectively along trajectories;
+    \item improve reward shaping for overtaking or bypassing central obstacles;
+    \item explore richer action spaces, including reverse motion and smoother steering commands;
+    \item train larger SOMs or alternative state encoders;
+    \item replace the tabular controller with deep reinforcement learning methods such as DQN or DDPG;
+    \item improve the physical realism of the simulator;
+    \item generate larger benchmark track sets procedurally;
+    \item transfer the approach to a more realistic simulator or to a small robotic platform.
+\end{itemize}
+
+Overall, the project demonstrates a full learning-control workflow for autonomous navigation in a controlled environment. Its main value is not only the final policy, but also the modular framework that makes it possible to draw new tracks, retrain state representations, compare reinforcement learning configurations and evaluate the resulting behavior with reproducible metrics.
