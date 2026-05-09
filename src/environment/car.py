@@ -41,13 +41,14 @@ class Car:
 
     def step(self, acceleration: float, steering_diff_angle_deg: float, dt: float) -> CarState:
         """Advance the car with explicit Euler integration."""
+
+        self.state.x += math.cos(self.state.heading) * self.state.velocity * dt
+        self.state.y += math.sin(self.state.heading) * self.state.velocity * dt
         self.state.velocity += acceleration * dt
         self.state.velocity = max(self.min_speed, min(self.max_speed, self.state.velocity))
         self.state.heading = _wrap_angle(
             self.state.heading + math.radians(steering_diff_angle_deg)
         )
-        self.state.x += math.cos(self.state.heading) * self.state.velocity * dt
-        self.state.y += math.sin(self.state.heading) * self.state.velocity * dt
         return self.state
 
     def corners(self) -> list[tuple[float, float]]:
