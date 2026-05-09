@@ -1,7 +1,7 @@
-\section{Implementation Details}
+\section{Implementation details}
 \label{ch:implementation}
 
-\subsection{Software Structure}
+\subsection{Software structure}
 
 The project was implemented in Python. Numerical operations are based on NumPy, geometry and collision checks on Shapely, interactive rendering on Pygame, SOM training on MiniSom, and analysis plots on Matplotlib.
 
@@ -10,76 +10,98 @@ The main entry points cover the complete workflow:
     \item \texttt{draw\_tracks.py} creates tracks and edits obstacle layouts;
     \item \texttt{train\_som.py} trains the Kohonen map from sampled or policy-generated lidar data;
     \item \texttt{train\_rl.py} trains and checkpoints the Q-learning controller;
-    \item \texttt{run\_inference.py} executes a trained policy visually;
+    \item \texttt{run\_inference.py} executes a trained policy;
     \item \texttt{evaluate\_models.py} and \texttt{plot\_analysis.py} compute metrics and generate plots.
 \end{itemize}
 Configuration values are collected in \texttt{config.toml}; tracks are stored as JSON files, models as NumPy \texttt{.npz} checkpoints, and analysis outputs as CSV files and PNG figures.
 
-\subsection{Simulation Environment}
+\subsection{Simulation environment}
 
-The road geometry is generated from the centerline using a Shapely line buffer. Obstacles are circular polygons. The car rectangle is rotated according to the current heading, and its polygon is used for all collision checks. An episode terminates when the car intersects the finish line, leaves the road, hits an obstacle, or reaches the maximum number of steps.
+The road geometry is generated from the centerline using a Shapely line buffer. Obstacles are circular polygons. The car rectangle is rotated according to the current heading, and its polygon is used for all collision checks. An episode terminates when the car intersects the finish line, goes off the road, hits an obstacle, or reaches the maximum number of steps.
 
-The car dynamics are intentionally simple. At each step,
+The car dynamics follow the simple explicit Euler integration. At each step,
 \[
-    v_{t+1} = \mathrm{clip}(v_t + a_t \Delta t),
-\]
-\[
+    v_{t+1} = min(v_t + a_t \Delta t, v_{\max}), \qquad
     \theta_{t+1} = \theta_t + \Delta \theta_t,
 \]
 \[
-    x_{t+1} = x_t + v_{t+1}\cos(\theta_{t+1})\Delta t, \qquad
-    y_{t+1} = y_t + v_{t+1}\sin(\theta_{t+1})\Delta t .
+    x_{t+1} = x_t + v_{t}\cos(\theta_{t})\Delta t, \qquad
+    y_{t+1} = y_t + v_{t}\sin(\theta_{t})\Delta t
 \]
-where acceleration updates velocity, steering directly changes heading, and the car advances along the new direction.
 
 The lidar system casts rays from the car center and computes the nearest valid intersection with road borders or obstacles. The finish line is treated as a target rather than as an obstacle, so intersections beyond it are ignored.
 
-\subsection{Kohonen Self-Organizing Map}
+\subsection{Kohonen self-organizing map}
 
-The SOM is used to convert continuous lidar measurements into a discrete state suitable for a tabular controller. In the three-lidar setting, the feature vector is
+The SOM is used to convert continuous lidar measurements into a discrete state with a distribution similar to the input space, as shown in \Cref{fig:som-weights}. In the three-lidar setting and five-lidar setting, the feature vector is respectively
 \[
-    \phi_3 = (d_c, d_r - d_l),
+    \phi_3 = (d_c, d_r - d_l), \quad \phi_5 = (d_c, d_r - d_l, d_{mr} - d_{ml}),
 \]
-where $d_c$ is the central distance and $d_l$, $d_r$ are the left and right distances. In the five-lidar setting, the feature vector is extended to
-\[
-    \phi_5 = (d_c, d_r - d_l, d_{mr} - d_{ml}),
-\]
-where $d_{ml}$ and $d_{mr}$ are the middle-left and middle-right distances.
+where $d_c$ is the central distance, $d_l$ and $d_r$ are the left and right distances, and $d_{ml}$ and $d_{mr}$ are the middle-left and middle-right distances.
 
 The final normalization is component-wise:
 \[
-    \hat d_c = \frac{\mathrm{clip}(d_c,0,d_{\max})}{d_{\max}},
-\]
-and
-\[
+    \hat d_c = \frac{\mathrm{clip}(d_c,0,d_{\max})}{d_{\max}} \in [0,1], \qquad
     \widehat{\Delta d} =
-    \frac{\mathrm{clip}(\Delta d,-d_{\max},d_{\max})}{2d_{\max}} .
+    \frac{\mathrm{clip}(\Delta d,-d_{\max},d_{\max})}{2d_{\max}} \in [-0.5, 0.5]
 \]
-This preserves the distinction between close and far obstacles without normalizing the whole vector by its Euclidean norm.
 
-The SOM was trained with Euclidean BMU selection. The main experiments considered $6 \times 6$ and $12 \times 12$ grids, corresponding to 36 and 144 discrete states. Training samples can be generated randomly from valid track positions, or collected by running an existing Q-table policy and recording simulated lidar measurements.
+The main experiments considered $6 \times 6$ and $12 \times 12$ grids, corresponding to 36 and 144 discrete states. Training samples can be generated randomly from valid track positions, or collected by running an existing Q-table policy and recording simulated lidar measurements: the former approach was used because it better covers outlier scenarios in the state space, such as very close obstacles. The training process adopts a gaussian neighborhood function with inverse time decay of the learning rate ($\alpha_0=1$) and neighborhood variance ($\sigma_0=\frac{\sqrt{N_{neurons}}}{2}$). The final SOM weights are stored as a NumPy array checkpoint.
 
-\subsection{Q-Learning Controller}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{images/3/som.png}
+    \caption{Training of the SOM weights with random samples in the three-lidar setting.}
+    \label{fig:som-weights}
+\end{figure}
 
-For each SOM state and each action, the Q-table stores an estimate of the expected discounted return. The update rule is
+\subsection{Q-Learning controller}
+
+For each SOM state and each action, the Q-table stores an estimate of the expected total discounted future return. The update rule is
 \[
     Q(s_t,a_t) \leftarrow Q(s_t,a_t) +
     \alpha \left[
-    r_t + \gamma \max_a Q(s_{t+1},a) - Q(s_t,a_t)
+    r_{t+1} + \gamma \max_a Q(s_{t+1},a) - Q(s_t,a_t)
     \right],
 \]
-with the terminal case obtained by removing the future-value term. The values of $\alpha$, $\gamma$, $\epsilon$, $\beta$ and the reward parameters are read from the configuration file.
+with the terminal case obtained by removing the future-value term.
+The values of $\alpha$, $\gamma$, $\epsilon$, $\beta$, $\delta$ and the reward parameters are read from the configuration file. The learning rate $\alpha$ is constant and equal to $0.1$; the discount factor $\gamma$ is constant and equal to $0.9$. During the training phase, a $\epsilon$-greedy strategy is used for action selection combined with Boltzmann exploration.
+The exploration rate $\epsilon$ starts at $1.0$ and decays by a factor of $\delta=0.97$ every episode, while the Boltzmann parameter $\beta$ starts at $0.0$ and increases by $0.01$ every episode, thus progressively reducing exploration.
 
-Action selection combines random exploration and Boltzmann selection. Initially, $\epsilon$-greedy exploration visits diverse state-action pairs. As training progresses, $\epsilon$ decays and the Boltzmann parameter $\beta$ increases, making the policy more dependent on learned Q-values.
+Since the success condition consists of reaching the finish line, the reward is very sparse. To address this, two approaches have been adopted: curriculum learning and reward shaping.
+Regarding the former, training started on simple tracks without obstacles, then moved to more complex tracks without obstacles, followed by easy obstacle layouts, and finally hard obstacle layouts.  Checkpoints store the Q-table, action metadata, linked SOM path, lidar configuration, and recent episode rewards. When resuming from a checkpoint, $\epsilon$ and $\beta$ are both set to $0.5$.
 
-The reward function includes:
+The reward function for each step is shaped with the following terms (multiple values are relative to different phases of the curriculum learning):
 \begin{itemize}
-    \item a positive terminal reward for reaching the finish line;
-    \item a negative terminal reward for collisions or off-track termination;
     \item a small step penalty to encourage shorter trajectories;
-    \item safe and unsafe shaping terms based on lidar thresholds;
-    \item progress and regress rewards computed from movement along the centerline;
-    \item a stuck penalty when the car does not progress for a configured number of iterations.
+    \item a large positive terminal reward for reaching the finish line;
+    \item a large negative terminal reward for collisions, off-track, or max steps terminations;
+    \item a small positive reward for safe states ($d_c > 0.7$ and $d_{rl}<0.3$))
+    \item a small negative reward for unsafe states ($d_c < 0.5$ or $d_{rl} < 0.5$);
+    \item a small positive reward for any centerline point crossed in the forward direction;
+    \item a small negative reward for any centerline point crossed in the backward direction;
+    \item a stuck penalty when the car does not progress crossing a centerline point for a configured number ($3$) of consecutive iterations.
 \end{itemize}
 
-Because the sparse success reward was difficult to learn directly, curriculum learning was adopted: training moved from simple tracks to complex tracks without obstacles, then to easy obstacles and finally to hard obstacle layouts. Checkpoints store the Q-table, action metadata, linked SOM path, lidar configuration and recent episode rewards.
+The reward values are indicated in the \Cref{tab:reward-parameters} for the different phases of the curriculum learning:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{l>{\centering\arraybackslash}m{2cm}>{\centering\arraybackslash}m{2cm}>{\centering\arraybackslash}m{2cm}}
+        \toprule
+        Reward term & Simplest & Non-obs. & Obs. easy/hard\\
+        \midrule
+        Step penalty & -0.1 & -0.1 & -0.1 \\
+        Success reward & 100.0 & 500.0 & 1000.0 \\
+        Failure penalty & -100.0 & -500.0 & -500.0 \\
+        Safe state reward & 0.1 & 0.1 & 0.2 \\
+        Unsafe state penalty & -0.1 & -0.1 & -0.2 \\
+        Progress reward & 10.0 & 7.5 & 10.0 \\
+        Regress penalty & -10.0 & -7.5 & -10.0 \\
+        Stuck penalty & -1.0 & -1.0 & -1.0 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Reward parameters for the different phases of curriculum learning}
+    \label{tab:reward-parameters}
+\end{table}

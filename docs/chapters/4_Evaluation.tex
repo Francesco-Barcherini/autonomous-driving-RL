@@ -1,7 +1,7 @@
-\section{Evaluation and Results}
+\section{Evaluation and results}
 \label{ch:evaluation}
 
-\subsection{Experimental Setup}
+\subsection{Experimental setup}
 
 The trained models were evaluated headlessly on the saved test tracks. Each run starts from the deterministic initial pose and applies the greedy action with maximum Q-value. The evaluation records terminal reason, trajectory length, number of steps, lidar safety values and geometric distances from borders and obstacles.
 
@@ -43,7 +43,7 @@ The following metrics were computed for each model-track pair:
 
 The unsafe value is more informative than a simple unsafe-step percentage because it weights unsafe states by severity.
 
-\subsection{Training Reward}
+\subsection{Training reward}
 
 \begin{figure}[H]
     \centering
@@ -54,7 +54,7 @@ The unsafe value is more informative than a simple unsafe-step percentage becaus
 
 \Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The plot is intended to show both learning stability and the impact of curriculum changes. The detailed interpretation of the individual curves can be refined after visual inspection of the final generated figure.
 
-\subsection{Distance Covered}
+\subsection{Distance covered}
 
 \begin{figure}[H]
     \centering
