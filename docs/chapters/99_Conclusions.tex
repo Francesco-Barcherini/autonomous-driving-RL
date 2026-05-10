@@ -5,7 +5,7 @@ This project developed a complete two-dimensional self-driving car demonstration
 
 The experiments explored multiple configurations. The most relevant design factors were the number of lidar rays, the steering range and the size of the SOM grid. Richer perception, especially with five lidar rays, provides additional information about obstacles in front of the vehicle and about the symmetry of free space around the car. Larger SOM grids provide more representational capacity, although they also increase the number of samples and training episodes that must be collected.
 
-Several limitations remain. Central obstacles are particularly difficult because the immediate lidar state may indicate danger without specifying a unique best side for avoidance. The discrete steering policy can also produce oscillations, especially when the car alternates between similar SOM states. Very sharp curves, long tracks and dense obstacle layouts remain challenging for a purely tabular controller.
+Several limitations remain. Central obstacles are particularly difficult to handle because the immediate lidar state may indicate danger without specifying a unique best side for avoidance. The discrete steering policy can also produce oscillations, especially when the car alternates between similar SOM states. Very sharp curves, long tracks and dense obstacle layouts remain challenging for a purely tabular controller.
 
 Future work could extend the project in several directions:
 \begin{itemize}

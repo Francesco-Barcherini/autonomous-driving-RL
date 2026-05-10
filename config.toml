@@ -100,14 +100,11 @@ drl_threshold_unsafe = 0.5
 # reward_progress = 10.0
 # reward_regress = -10.0
 # reward_stuck = -1.0
-# # reward_front_blocked = -1.0
-# # reward_front_unsafe_steering = 1.0
 # num_stuck = 3
 # dc_threshold_safe = 0.7
 # drl_threshold_safe = 0.3
 # dc_threshold_unsafe = 0.5
 # drl_threshold_unsafe = 0.5
-# # front_blocked_drl_ratio = 1.0
 # resume_epsilon = 0.5
 # resume_beta = 0.5
 

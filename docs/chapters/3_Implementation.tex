@@ -46,7 +46,7 @@ The normalization is component-wise:
     \frac{\mathrm{clip}(\Delta d,-d_{\max},d_{\max})}{2d_{\max}} \in [-0.5, 0.5]
 \]
 
-The main experiments considered $6 \times 6$ and $12 \times 12$ grids, corresponding to 36 and 144 discrete states. Training samples can be generated randomly from valid track positions, or collected by running an existing Q-table policy and recording simulated lidar measurements: the former approach was used because it better covers outlier scenarios in the state space, such as very close obstacles. The training process adopts a gaussian neighborhood function with inverse time decay of the learning rate ($\alpha_0=1$) and neighborhood variance ($\sigma_0=\frac{\sqrt{N_{neurons}}}{2}$). The final SOM weights are stored as a NumPy array checkpoint.
+The main experiments considered $6 \times 6$ and $12 \times 12$ grids, corresponding to 36 and 144 discrete states. Training samples can be generated randomly from valid track positions, or collected by running an existing Q-table policy and recording simulated lidar measurements: the former approach was used because it better covers outlier scenarios in the state space, such as very close obstacles. The training process adopts a gaussian neighborhood function with inverse time decay of the learning rate ($\alpha_0=1$) and neighborhood sigma ($\sigma_0=\frac{\sqrt{N_{neurons}}}{2}$). The final SOM weights are stored as a NumPy array checkpoint.
 
 \begin{figure}[H]
     \centering
@@ -71,7 +71,7 @@ The exploration rate $\epsilon$ starts at $1.0$ and decays by a factor of $\delt
 Since the success condition consists of reaching the finish line, the reward is very sparse. To address this, two approaches have been adopted: curriculum learning and reward shaping.
 Regarding the former, training started on simple tracks without obstacles, then moved to more complex tracks without obstacles, followed by easy obstacle layouts, and finally hard obstacle layouts.  Checkpoints store the Q-table, action metadata, linked SOM path, lidar configuration, and recent episode rewards. When resuming from a checkpoint, $\epsilon$ and $\beta$ are both set to $0.5$.
 
-The reward function for each step is shaped with the following terms (multiple values are relative to different phases of the curriculum learning):
+The reward function for each step is shaped with the following terms:
 \begin{itemize}
     \item a small step penalty to encourage shorter trajectories;
     \item a large positive terminal reward for reaching the finish line;

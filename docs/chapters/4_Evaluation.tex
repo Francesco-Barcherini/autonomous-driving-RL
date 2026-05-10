@@ -38,7 +38,7 @@ The following metrics were computed for each model-track pair: training reward, 
     \label{fig:reward-by-episode}
 \end{figure}
 
-\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The reward is averaged over the last window of episodes covering every track. The plot is intended to show both learning stability and the impact of curriculum changes. Cross markers indicate checkpoints where the curriculum dataset changed, which often causes a drop in reward due to the new challenges introduced. The figure reports training values until the episodes with stabilized reward. It is possible to see that the 5-lidar model has a more stable evolution but, having more parameters, it converges after more episodes than the 3-lidar models. For the next metrics, only the final checkpoint trained on hard obstacles is considered for each configuration.
+\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The reward is averaged over the last window of episodes covering all tracks. The plot is intended to show both learning stability and the impact of curriculum changes. Cross markers indicate checkpoints where the curriculum dataset changed, which often causes a drop in reward due to the new challenges introduced. The figure reports training values until the episodes with stabilized reward. It is possible to see that the 5-lidar model has a more stable evolution but, having more parameters, it converges after more episodes than the 3-lidar models. For the next metrics, only the final checkpoint trained on hard obstacles is considered for each configuration.
 
 \subsubsection{Success rate and distance percentage}
 
