@@ -16,7 +16,9 @@ from src.analysis.evaluation import (
     write_metrics_csv,
 )
 from src.analysis.plots import (
+    _best_distance_points,
     _distance_rows_by_model_track,
+    _distance_plot_value,
     _histogram_scale,
     checkpoint_dataset_marker,
     moving_average,
@@ -174,6 +176,10 @@ class AnalysisTests(unittest.TestCase):
             [row for row in collapsed if row["model_label"] == "m1" and row["track_name"] == "a.json"][0]["distance_percentage"],
             "1.0",
         )
+        self.assertEqual(_distance_plot_value({"success": "yes", "distance_percentage": "0.42"}), 1.0)
+        self.assertEqual(_distance_plot_value({"success": "no", "distance_percentage": "0.42"}), 0.42)
+        best_points = _best_distance_points(collapsed, {"a.json": 0, "b.json": 1})
+        self.assertEqual(best_points, [(0.0, 1.0), (1.0, 0.4)])
         with tempfile.TemporaryDirectory() as directory:
             output = plot_distance_percentage_by_track(rows, Path(directory) / "distance.png")
             self.assertTrue(output.exists())

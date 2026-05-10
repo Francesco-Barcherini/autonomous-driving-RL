@@ -3,7 +3,7 @@
 
 \subsection{Experimental setup}
 
-The trained models were evaluated headlessly on the saved test tracks. Each run starts from the deterministic initial pose and applies the greedy action with maximum Q-value. The evaluation records terminal reason, trajectory length, number of steps, lidar safety values and geometric distances from borders and obstacles.
+The trained models have been evaluated on the saved test tracks. Each run starts from the deterministic initial pose and applies the greedy action with maximum Q-value. The evaluation records terminal reason, trajectory length, number of steps, lidar safety values and geometric distances from borders and obstacles.
 
 The compared configurations are summarized in \Cref{tab:model-configurations}. They represent the main design choices explored during development: SOM distance metric, steering range, number of SOM states and number of lidar rays.
 
@@ -16,84 +16,75 @@ The compared configurations are summarized in \Cref{tab:model-configurations}. T
         \toprule
         Label & Lidar & SOM & Notes \\
         \midrule
-        \texttt{som\_cosine} & 3 & $6 \times 6$ & cosine baseline, $\pm 2^\circ$ \\
-        \texttt{3-lidar} & 3 & $6 \times 6$ & Euclidean SOM, $\pm 2^\circ$ \\
+        \texttt{som\_cosine} & 3 & $6 \times 6$ & cosine distance, $\pm 2^\circ$ \\
+        \texttt{3-lidar} & 3 & $6 \times 6$ & euclidean distance, $\pm 2^\circ$ \\
         \texttt{3-lidar-5deg} & 3 & $6 \times 6$ & wider steering, $\pm 5^\circ$ \\
         \texttt{3-lidar-5deg-12som} & 3 & $12 \times 12$ & larger state space \\
-        \texttt{5-lidar-5deg} & 5 & $6 \times 6$ & final richer perception \\
+        \texttt{5-lidar-5deg} & 5 & $6 \times 6$ & 5 lidar rays \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 \subsection{Metrics}
 
-The following metrics were computed for each model-track pair:
-\begin{itemize}
-    \item \textbf{success rate}: percentage of tracks in which the car reaches the finish line;
-    \item \textbf{distance percentage}: total traveled center distance divided by the centerline length of the circuit;
-    \item \textbf{safety margin}: minimum geometric distance between the car rectangle and any obstacle or road border, after ignoring the first 200 steps to avoid start-line artifacts;
-    \item \textbf{unsafe value}: mean weighted unsafeness over the episode, based on lidar distance ratios;
-    \item \textbf{weighted time ratio}: comparison with the base model using
-    \[
-        \frac{T_m \cdot p_m}{T_b \cdot p_b},
-    \]
-    where $T_m$ and $T_b$ are the number of steps used by the model and the base model, while $p_m$ and $p_b$ are the corresponding distance percentages;
-    \item \textbf{training reward}: moving average of checkpoint rewards, with markers indicating curriculum changes.
-\end{itemize}
+The following metrics were computed for each model-track pair: training reward, success rate, distance percentage, unsafe value, safety margin, weighted time ratio.
 
-The unsafe value is more informative than a simple unsafe-step percentage because it weights unsafe states by severity.
-
-\subsection{Training reward}
+\subsubsection{Training reward}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\textwidth]{../out/analysis/reward_by_episode.png}
-    \caption{Moving average of training reward by episode. Cross markers indicate checkpoints where the curriculum dataset changed.}
+    \includegraphics[width=0.92\textwidth]{images/4/reward_by_episode.png}
+    \caption{Moving average of training reward by episode.}
     \label{fig:reward-by-episode}
 \end{figure}
 
-\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The plot is intended to show both learning stability and the impact of curriculum changes. The detailed interpretation of the individual curves can be refined after visual inspection of the final generated figure.
+\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The reward is averaged over the last set of episodes training on every track. The plot is intended to show both learning stability and the impact of curriculum changes. Cross markers indicate checkpoints where the curriculum dataset changed, which often causes a drop in reward due to the new challenges introduced. The figure reports training values until the episodes with stabilized reward. It is possible to see that the 5-lidar model has a more stable evolution but, having more parameters, it converges after more episodes than the 3-lidar models. For the next metrics, only the final checkpoint trained on hard obstacles is considered for each configuration.
 
-\subsection{Distance covered}
+\subsubsection{Success rate and distance percentage}
+
+On the 45 test tracks, the last of which can be considered quite challenging, the success rate is low for the two simplest models (som\_cosine and 3-lidar) and increases at $71.7\%$ for the remaining models. The som with grid dimension of 12 neurons shows slightly better performance at failures compared to the 6 neuron grid.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\textwidth]{../out/analysis/distance_percentage_by_track.png}
-    \caption{Distance percentage reached by each model on each test track. Dots indicate successful episodes, while crosses indicate failures.}
+    \includegraphics[width=0.92\textwidth]{images/4/distance_percentage_by_track.png}
+    \caption{Distance percentage reached by each model on each test track in case of failure.}
     \label{fig:distance-percentage}
 \end{figure}
 
-\Cref{fig:distance-percentage} compares the distance completed on each test track. This plot is useful because failures are not all equivalent: an early collision is more severe than a failure after most of the circuit has been completed.
+\Cref{fig:distance-percentage} shows the distance percentage reached by each model on each test track, computed as the ratio of the distance traveled to the total length of the centerline of the track. The 5-lidar model shows a significant improvement in hard tracks while suffering from more early failures in the easier tracks mainly due to specific complex patterns (e.g., sharp turns with close obstacles) that have not been learned during training, probably because of the increased state space and the limited number of training episodes. The cosine similarity model is problematic because ignores the magnitudes of the lidar distances and takes into account only their relative proportions. The model with $2^\circ$ steering range is not able to react to sharp turns and obstacles. These last models will not be considered for the next metrics.
 
-\subsection{Safety and Time Distributions}
+\subsubsection{Unsafe value and safety margin}
+Unsafe value is a metric computed to measure the average risk of collision following models' trajectories, based on unsafeness thresholds used for reward shaping. It is defined as
+\[
+    unsafe\_value = \frac{\sum\limits_{unsafe} max(1-\hat{d}_c,\frac{|\hat{d}_{rl}|}{0.5})}{N_{steps}}
+\]
+
+thus computing the average unsafeness of steps; the unsafeness is the maximum between the central proximity to an obstacle and the normalized lateral imbalance.
+
+The safety margin is, instead, the minimum distance between the car rectangle and any obstacle or road border, after ignoring the first 200 steps to avoid measuring the initial distance from the starting line. Unsafe value captures perception-based risk, while safety margin captures geometric clearance.
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../out/analysis/safety_margin_histogram_5-lidar-5deg.png}
-        \caption{Safety margin}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../out/analysis/unsafe_value_histogram_5-lidar-5deg.png}
-        \caption{Unsafe value}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../out/analysis/time_ratio_histogram_3-lidar-5deg.png}
-        \caption{Time ratio example}
-    \end{subfigure}
-    \caption{Representative evaluation histograms. The complete set of per-model histograms is generated in the analysis output directory.}
-    \label{fig:evaluation-histograms}
+    \includegraphics[width=0.92\textwidth]{images/4/unsafesafety.pdf}
+    \caption{Comparison of the distributions of unsafe value and safety margin across models.}
+    \label{fig:unsafe-safety}
 \end{figure}
 
-\Cref{fig:evaluation-histograms} summarizes the types of distributions used to compare the models. The safety margin captures the minimum clearance from borders and obstacles, the unsafe value captures lidar-based risk, and the weighted time ratio compares efficiency while accounting for the actual distance completed. The final discussion of these histograms can be expanded once the relevant plots are selected and inspected in detail.
+\Cref{fig:unsafe-safety} summarizes the distributions of the two metrics across the models. The unsafe value (lower is better) is similar for all models, with a slightly left skewed distribution for the 5-lidar model. On the other hand, the safety margin (higher is better) shows a thinner margin for the 5-lidar model. Considering that the success rate of the 5-lidar model is high, it is possible to conclude that the model is able to reach the goal while taking more risks and driving closer to obstacles and borders, but for less steps in unsafe states. This is a consequence of the reward shaping, which encourages the model to prioritize progress and speed in reaching the goal along with safety.
 
-\subsection{Discussion}
+\subsubsection{Weighted time ratio}
+In order to compare the efficiency of the models, the weighted time ratio is computed for model $m$ and track $i$ against the base model with 5 lidar rays as
 
-The evaluation workflow provides complementary views of model performance. Success rate measures whether the goal was reached, distance percentage measures partial progress, safety margin measures geometric clearance, unsafe value measures perception-based risk, and weighted time ratio measures efficiency without rewarding early failures.
+\[
+    time\_ratio_{m,i} = \frac{\sum\limits_i steps_{m,i} / distance\_percentage_{m,i}}{\sum\limits_i steps_{5lidar,i} / distance\_percentage_{5lidar,i}}
+\]
+so that, in case of failure at different completion levels, the number of steps is weighted by the distance percentage itself.
 
-The generated plots support the comparison of increasingly expressive configurations. The five-lidar model provides richer information about frontal and lateral obstacles, while larger SOM grids increase the number of states available to the Q-table. These design choices must be assessed jointly with safety and stability, because a faster model is not preferable if it produces lower clearance or higher unsafe values.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/4/timeratio.pdf}
+    \caption{Comparison of the distributions of time ratio against the 5-lidar model.}
+    \label{fig:time-ratio}
+\end{figure}
+
+\Cref{fig:time-ratio} shows the distribution of the time ratio (left skewed is better) for the 3-lidar-5deg and 3-lidar-5deg-12som models compared to the 5-lidar model (value 1.0). The graph shows that the three models are almost equivalent in terms of efficienct, with the 5-lidar model being slightly faster on average.

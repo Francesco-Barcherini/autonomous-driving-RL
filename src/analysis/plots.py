@@ -203,7 +203,7 @@ def plot_time_ratio_histograms(
         output_dir,
         "time_ratio_histogram",
         "Time ratio",
-        "(time * distance percentage) / base",
+        "(time / distance percentage) / base",
         colors,
         bins=80,
     )
@@ -243,43 +243,47 @@ def plot_distance_percentage_by_track(
     x_by_track = {track: index for index, track in enumerate(tracks)}
     labels = sorted({row.get("model_label", "") for row in collapsed_rows if row.get("model_label", "")})
     offsets = _model_offsets(labels)
+    best_points = _best_distance_points(collapsed_rows, x_by_track)
+    if best_points:
+        ax.plot(
+            [point[0] for point in best_points],
+            [point[1] for point in best_points],
+            color="black",
+            linewidth=1.5,
+            label="best model per track",
+            zorder=1,
+        )
     for label_index, label in enumerate(labels):
         label_rows = [row for row in collapsed_rows if row.get("model_label") == label]
         color = None if colors is None else colors.get(label)
         success_count = sum(1 for row in label_rows if row.get("success") == "yes")
         total_count = len(label_rows)
         success_rate = 100.0 * success_count / total_count if total_count > 0 else 0.0
-        legend_label = f"{label}"
-        plot_points = []
+        legend_label = f"{label} ({success_rate:.1f}% success)"
         ax.scatter([], [], color=color, marker="o", label=legend_label, s=42)
-        for row_index, row in enumerate(label_rows):
+        for row in label_rows:
             track = row.get("track_name", "")
             if track not in x_by_track:
                 continue
-            marker = "" if row.get("success") == "yes" else "o"
+            marker = "*" if row.get("success") == "yes" else "o"
             ax.scatter(
-                x_by_track[track],# + offsets.get(label, 0.0),
-                _float(row.get("distance_percentage", "")),
+                x_by_track[track] + offsets.get(label, 0.0) if row.get("success") == "yes" else x_by_track[track],
+                _distance_plot_value(row),
                 color=color,
                 marker=marker,
-                #label=legend_label if row_index == 0 else None,
-                s=42,
+                s=70 if marker == "*" else 42,
+                # always same order for same label different from other labels
+                zorder=3 + label_index,
             )
-            plot_points.append((x_by_track[track], _float(row.get("distance_percentage", ""))))
-        #ax.plot([x + offsets.get(label, 0.0) for x, _ in plot_points], [y for _, y in plot_points], color=color)
-        # plot the line from one point to the next only if both points are not successful
-        for i in range(1, len(plot_points)):
-            x1, y1 = plot_points[i - 1]
-            x2, y2 = plot_points[i]
-            if label_rows[i - 1].get("success") != "yes" and label_rows[i].get("success") != "yes":
-                ax.plot([x1, x2], [y1, y2], color=color)
+    ax.scatter([], [], color="0.35", marker="*", label="success", s=70)
     ax.set_xticks(list(x_by_track.values()))
     ax.set_xticklabels([str(index) for index in range(len(tracks))])
     ax.set_xlabel("Track")
     ax.set_ylabel("Distance percentage")
     ax.set_title("Distance percentage by track")
     ax.grid(True, alpha=0.25)
-    ax.legend(fontsize=8, loc="upper left")
+    # 100 px under upper left
+    ax.legend(fontsize=8, loc="upper left", bbox_to_anchor=(0.01, 0.75))
     return _save(fig, output_path)
 
 
@@ -333,10 +337,33 @@ def _is_hard_row(row: dict[str, str]) -> bool:
     return "hard" in Path(row.get("model_path", "")).name
 
 
+def _distance_plot_value(row: dict[str, str]) -> float:
+    if row.get("success") == "yes":
+        return 1.0
+    return _float(row.get("distance_percentage", ""))
+
+
+def _best_distance_points(
+    rows: list[dict[str, str]],
+    x_by_track: dict[str, int],
+) -> list[tuple[float, float]]:
+    best_by_track: dict[str, float] = {}
+    for row in rows:
+        track = row.get("track_name", "")
+        if track not in x_by_track:
+            continue
+        value = _distance_plot_value(row)
+        best_by_track[track] = max(best_by_track.get(track, 0.0), value)
+    return [
+        (float(x_by_track[track]), best_by_track[track])
+        for track in sorted(best_by_track, key=lambda item: x_by_track[item])
+    ]
+
+
 def _model_offsets(labels: list[str]) -> dict[str, float]:
     if len(labels) <= 1:
         return {label: 0.0 for label in labels}
-    spread = 0.65
+    spread = 0.5
     return {
         label: -spread / 2.0 + spread * index / (len(labels) - 1)
         for index, label in enumerate(labels)
