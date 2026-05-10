@@ -1,4 +1,4 @@
-\section{System Overview and Specifications}
+\section{System overview and specifications}
 \label{ch:overview}
 
 \subsection{Architecture}
@@ -24,8 +24,8 @@ The car is represented by a rectangular rigid body. Its kinematic state is
 \]
 where $(x,y)$ is the center position, $\theta$ is the heading angle and $v$ is the scalar longitudinal velocity. The default initial pose is the first centerline position for which the full car rectangle lies inside the road, with heading aligned to the local track direction. This prevents the episode from starting in an invalid off-track state.
 
-The final model uses five lidar rays distributed from $-\alpha$ to $+\alpha$, where $\alpha$ is configured to be 45 degrees. Earlier experiments also used a three-lidar version with only left, center and right rays.
+The final model uses five lidar rays distributed from $-\alpha$ to $+\alpha$, where $\alpha$ is configured as 45 degrees. The three-lidar version has only left, center and right rays.
 
 \subsection{Control specification}
 
-The action space contains 27 actions, defined as the cartesian product of three acceleration values and nine steering-delta values: in this way, the action space takes into account the dependency of a \textit{good} action from the combination of both acceleration and steering. The acceleration values are full braking, no acceleration and full acceleration. The steering component is a direct heading increment rather than an angular acceleration; this choice was introduced because direct steering was more reactive in the discrete controller.
+The action space contains 27 actions, defined as the Cartesian product of three acceleration values and nine steering-delta values: in this way, the action space takes into account the dependency of a \textit{good} action from the combination of both acceleration and steering. The acceleration values are full braking, no acceleration and full acceleration. The steering component is a direct heading increment rather than an angular acceleration; this choice was introduced because direct steering was more reactive in the discrete controller.

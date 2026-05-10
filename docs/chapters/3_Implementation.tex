@@ -17,7 +17,7 @@ Configuration values are collected in \texttt{config.toml}; tracks are stored as
 
 \subsection{Simulation environment}
 
-The road geometry is generated from the centerline using a Shapely line buffer. Obstacles are circular polygons. The car rectangle is rotated according to the current heading, and its polygon is used for all collision checks. An episode terminates when the car intersects the finish line, goes off the road, hits an obstacle, or reaches the maximum number of steps.
+The road geometry is generated from the centerline using a Shapely line buffer. Obstacles are circular polygons. The car rectangle is rotated according to the current heading, and its polygon is used for all collision checks. An episode terminates when the car intersects the finish line, goes off road, hits an obstacle, or reaches the maximum number of steps.
 
 The car dynamics follow the simple explicit Euler integration. At each step,
 \[
@@ -39,7 +39,7 @@ The SOM is used to convert continuous lidar measurements into a discrete state w
 \]
 where $d_c$ is the central distance, $d_l$ and $d_r$ are the left and right distances, and $d_{ml}$ and $d_{mr}$ are the middle-left and middle-right distances.
 
-The final normalization is component-wise:
+The normalization is component-wise:
 \[
     \hat d_c = \frac{\mathrm{clip}(d_c,0,d_{\max})}{d_{\max}} \in [0,1], \qquad
     \widehat{\Delta d} =
@@ -77,7 +77,7 @@ The reward function for each step is shaped with the following terms (multiple v
     \item a large positive terminal reward for reaching the finish line;
     \item a large negative terminal reward for collisions, off-track, or max steps terminations;
     \item a small positive reward for safe states ($d_c > 0.7$ and $d_{rl}<0.3$))
-    \item a small negative reward for unsafe states ($d_c < 0.5$ or $d_{rl} < 0.5$);
+    \item a small negative reward for unsafe states ($d_c < 0.5$ or $d_{rl} > 0.5$);
     \item a small positive reward for any centerline point crossed in the forward direction;
     \item a small negative reward for any centerline point crossed in the backward direction;
     \item a stuck penalty when the car does not progress crossing a centerline point for a configured number ($3$) of consecutive iterations.

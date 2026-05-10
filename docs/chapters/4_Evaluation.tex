@@ -17,7 +17,7 @@ The compared configurations are summarized in \Cref{tab:model-configurations}. T
         Label & Lidar & SOM & Notes \\
         \midrule
         \texttt{som\_cosine} & 3 & $6 \times 6$ & cosine distance, $\pm 2^\circ$ \\
-        \texttt{3-lidar} & 3 & $6 \times 6$ & euclidean distance, $\pm 2^\circ$ \\
+        \texttt{3-lidar} & 3 & $6 \times 6$ & Euclidean distance, $\pm 2^\circ$ \\
         \texttt{3-lidar-5deg} & 3 & $6 \times 6$ & wider steering, $\pm 5^\circ$ \\
         \texttt{3-lidar-5deg-12som} & 3 & $12 \times 12$ & larger state space \\
         \texttt{5-lidar-5deg} & 5 & $6 \times 6$ & 5 lidar rays \\
@@ -33,12 +33,12 @@ The following metrics were computed for each model-track pair: training reward, 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\textwidth]{images/4/reward_by_episode.png}
+    \includegraphics[width=0.89\textwidth]{images/4/reward_by_episode.png}
     \caption{Moving average of training reward by episode.}
     \label{fig:reward-by-episode}
 \end{figure}
 
-\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The reward is averaged over the last set of episodes training on every track. The plot is intended to show both learning stability and the impact of curriculum changes. Cross markers indicate checkpoints where the curriculum dataset changed, which often causes a drop in reward due to the new challenges introduced. The figure reports training values until the episodes with stabilized reward. It is possible to see that the 5-lidar model has a more stable evolution but, having more parameters, it converges after more episodes than the 3-lidar models. For the next metrics, only the final checkpoint trained on hard obstacles is considered for each configuration.
+\Cref{fig:reward-by-episode} reports the reward evolution saved in the Q-table checkpoints. The reward is averaged over the last window of episodes covering every track. The plot is intended to show both learning stability and the impact of curriculum changes. Cross markers indicate checkpoints where the curriculum dataset changed, which often causes a drop in reward due to the new challenges introduced. The figure reports training values until the episodes with stabilized reward. It is possible to see that the 5-lidar model has a more stable evolution but, having more parameters, it converges after more episodes than the 3-lidar models. For the next metrics, only the final checkpoint trained on hard obstacles is considered for each configuration.
 
 \subsubsection{Success rate and distance percentage}
 
@@ -51,7 +51,7 @@ On the 45 test tracks, the last of which can be considered quite challenging, th
     \label{fig:distance-percentage}
 \end{figure}
 
-\Cref{fig:distance-percentage} shows the distance percentage reached by each model on each test track, computed as the ratio of the distance traveled to the total length of the centerline of the track. The 5-lidar model shows a significant improvement in hard tracks while suffering from more early failures in the easier tracks mainly due to specific complex patterns (e.g., sharp turns with close obstacles) that have not been learned during training, probably because of the increased state space and the limited number of training episodes. The cosine similarity model is problematic because ignores the magnitudes of the lidar distances and takes into account only their relative proportions. The model with $2^\circ$ steering range is not able to react to sharp turns and obstacles. These last models will not be considered for the next metrics.
+\Cref{fig:distance-percentage} shows the distance percentage reached by each model on each test track, computed as the ratio of the distance traveled to the total length of the centerline of the track. The 5-lidar model shows a significant improvement in hard tracks while suffering from more early failures in the easier tracks mainly due to specific complex patterns (e.g., sharp turns with close obstacles) that have not been learned during training, probably because of the increased input space and the limited number of training episodes. The cosine similarity model is problematic because ignores the magnitudes of the lidar distances and takes into account only their relative proportions. The model with $2^\circ$ steering range is not able to react to sharp turns and obstacles. These last models will not be considered for the next metrics.
 
 \subsubsection{Unsafe value and safety margin}
 Unsafe value is a metric computed to measure the average risk of collision following models' trajectories, based on unsafeness thresholds used for reward shaping. It is defined as
@@ -87,4 +87,4 @@ so that, in case of failure at different completion levels, the number of steps 
     \label{fig:time-ratio}
 \end{figure}
 
-\Cref{fig:time-ratio} shows the distribution of the time ratio (left skewed is better) for the 3-lidar-5deg and 3-lidar-5deg-12som models compared to the 5-lidar model (value 1.0). The graph shows that the three models are almost equivalent in terms of efficienct, with the 5-lidar model being slightly faster on average.
+\Cref{fig:time-ratio} shows the distribution of the time ratio (left skewed is better) for the 3-lidar-5deg and 3-lidar-5deg-12som models compared to the 5-lidar model (value 1.0). The graph shows that the three models are almost equivalent in terms of efficiency, with the 5-lidar model being slightly faster on average.
