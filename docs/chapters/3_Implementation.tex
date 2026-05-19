@@ -13,7 +13,15 @@ The main entry points cover the complete workflow:
     \item \texttt{run\_inference.py} executes a trained policy;
     \item \texttt{evaluate\_models.py} and \texttt{plot\_analysis.py} compute metrics and generate plots.
 \end{itemize}
-Configuration values are collected in \texttt{config.toml}; tracks are stored as JSON files, models as NumPy \texttt{.npz} checkpoints, and analysis outputs as CSV files and PNG figures.
+Each script can be executed with command-line arguments to specify configuration options, such as the track name, lidar configuration, SOM network, or qtable checkpoint to use. The set of available arguments is printed when running the script with the \texttt{-{}-help} flag.
+
+Configuration values are collected in \texttt{config.toml} as key-value pairs. Tracks are stored as JSON files: each file contains the list of centerline points, the road width, the coordinates of start and finish lines, and the list of obstacles with their position and radius.
+
+Kohonen networks and Q-tables are stored as NumPy \texttt{.npz} checkpoints. In the case of the Kohonen network, the checkpoint contains the weight matrix, the grid dimensions, the maximum distance of the lidar (used as normalization factor), the input dimensions (how many features), the number of lidar rays (3 or 5), the list of tracks where the samples were collected, and the list of other used configurations to allow for reproducibility.
+
+In the case of Q-learning, the checkpoint is saved every 50 episodes. It contains the Q-values for each state-action pair, the action list (list of acceleration-steering pairs), the values of $\epsilon$ and $\beta$ at the checkpoint, the linked SOM path, the training configurations (list of hyperparameters and reward details), and recent episode rewards (saved in triplets \texttt{<episode,track,final\_reward>}).
+
+The evaluation phase saves its outputs as CSV files containing the episode-level metrics, such as success, termination reason, time, distance traveled, safety margin, and so on. Analysis plots are saved as PNG figures. The naming convention for these files includes the model label, track name, and other relevant configuration details to allow for easy identification and comparison.
 
 \subsection{Simulation environment}
 
